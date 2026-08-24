@@ -1,0 +1,106 @@
+[
+  {
+    "id": "Area__SBS",
+    "original_file": "Area -SBS.gpkg",
+    "name": "Area -SBS",
+    "features_count": 28,
+    "file_path": "/public/layers/Area__SBS.geojson",
+    "geometry_type": "Polygon"
+  },
+  {
+    "id": "Area_fazenda_serra_vermelha__FSV",
+    "original_file": "Area fazenda serra vermelha -FSV.gpkg",
+    "name": "Area fazenda serra vermelha -FSV",
+    "features_count": 2,
+    "file_path": "/public/layers/Area_fazenda_serra_vermelha__FSV.geojson",
+    "geometry_type": "Polygon"
+  },
+  {
+    "id": "Area_floriano__CFB",
+    "original_file": "Area floriano -CFB.gpkg",
+    "name": "Area floriano -CFB",
+    "features_count": 54,
+    "file_path": "/public/layers/Area_floriano__CFB.geojson",
+    "geometry_type": "Polygon"
+  },
+  {
+    "id": "Buffer__fazendas_geral__SBS",
+    "original_file": "Buffer- fazendas geral -SBS.gpkg",
+    "name": "Buffer- fazendas geral -SBS",
+    "features_count": 1,
+    "file_path": "/public/layers/Buffer__fazendas_geral__SBS.geojson",
+    "geometry_type": "MultiPolygon"
+  },
+  {
+    "id": "Buffer_CFB_IMGSAT",
+    "original_file": "Buffer-CFB_IMGSAT.gpkg",
+    "name": "Buffer-CFB_IMGSAT",
+    "features_count": 1,
+    "file_path": "/public/layers/Buffer_CFB_IMGSAT.geojson",
+    "geometry_type": "MultiPolygon"
+  },
+  {
+    "id": "Buffer_floriano__CBF",
+    "original_file": "Buffer-floriano -CBF.gpkg",
+    "name": "Buffer-floriano -CBF",
+    "features_count": 1,
+    "file_path": "/public/layers/Buffer_floriano__CBF.geojson",
+    "geometry_type": "MultiPolygon"
+  },
+  {
+    "id": "Buffer_FSV_IMGSAT",
+    "original_file": "Buffer-FSV_IMGSAT.gpkg",
+    "name": "Buffer-FSV_IMGSAT",
+    "features_count": 1,
+    "file_path": "/public/layers/Buffer_FSV_IMGSAT.geojson",
+    "geometry_type": "MultiPolygon"
+  },
+  {
+    "id": "Buffer_SBS_IMGSAT",
+    "original_file": "Buffer-SBS_IMGSAT.gpkg",
+    "name": "Buffer-SBS_IMGSAT",
+    "features_count": 1,
+    "file_path": "/public/layers/Buffer_SBS_IMGSAT.geojson",
+    "geometry_type": "MultiPolygon"
+  },
+  {
+    "id": "Buffer_serra_vermelha__FSV",
+    "original_file": "Buffer-serra vermelha -FSV.gpkg",
+    "name": "Buffer-serra vermelha -FSV",
+    "features_count": 1,
+    "file_path": "/public/layers/Buffer_serra_vermelha__FSV.geojson",
+    "geometry_type": "MultiPolygon"
+  },
+  {
+    "id": "INMET",
+    "original_file": "INMET.gpkg",
+    "name": "INMET",
+    "features_count": 444,
+    "file_path": "/public/layers/INMET.geojson",
+    "geometry_type": "Point"
+  },
+  {
+    "id": "Municipios__CFB",
+    "original_file": "Municipios -CFB.gpkg",
+    "name": "Municipios -CFB",
+    "features_count": 6,
+    "file_path": "/public/layers/Municipios__CFB.geojson",
+    "geometry_type": "MultiPolygon"
+  },
+  {
+    "id": "Municipios__FSV",
+    "original_file": "Municipios -FSV.gpkg",
+    "name": "Municipios -FSV",
+    "features_count": 1,
+    "file_path": "/public/layers/Municipios__FSV.geojson",
+    "geometry_type": "MultiPolygon"
+  },
+  {
+    "id": "Municipios__SBS",
+    "original_file": "Municipios -SBS.gpkg",
+    "name": "Municipios -SBS",
+    "features_count": 3,
+    "file_path": "/public/layers/Municipios__SBS.geojson",
+    "geometry_type": "MultiPolygon"
+  }
+]

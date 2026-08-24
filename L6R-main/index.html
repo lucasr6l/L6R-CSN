@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>GEOPORTAL CSN | Monitoramento de Queimadas - NOAA-21</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <style>
+
+        :root {
+
+            --bg-dark: #070d18; --bg-sidebar: #0f172a; --bg-card: #1e293b; --bg-card-hover: #334155;
+
+            --border-color: #334155; --accent-green: #10b981; --accent-cyan: #06b6d4;
+
+            --accent-orange: #f59e0b; --accent-red: #ef4444; --accent-purple: #8b5cf6;
+
+            --text-main: #f8fafc; --text-muted: #94a3b8; --sidebar-width: 440px;
+
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; overflow: hidden; }
+
+        header { height: 64px; min-height: 64px; background-color: #030712; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 18px; z-index: 1001; }
+
+        .brand { display: flex; align-items: center; gap: 12px; }
+
+        .brand-logo { background: linear-gradient(135deg, #ef4444, #f59e0b); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+
+        .brand-title { font-size: 15px; font-weight: 700; }
+
+        .brand-subtitle { font-size: 11px; color: var(--accent-cyan); font-weight: 500; }
+
+        .clock-container { background: rgba(30, 41, 59, 0.85); border: 1px solid var(--border-color); padding: 5px 16px; border-radius: 8px; display: flex; align-items: center; gap: 16px; font-family: 'JetBrains Mono', monospace; }
+
+        .clock-item { display: flex; flex-direction: column; align-items: flex-start; }
+
+        .clock-label { font-size: 9px; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+
+        .clock-time { font-size: 13px; font-weight: 700; color: #38bdf8; }
+
+        .clock-time.brasilia { color: #4ade80; }
+
+        .clock-date { font-size: 9px; color: var(--text-muted); }
+
+        .clock-divider { width: 1px; height: 24px; background: var(--border-color); }
+
+        .header-actions { display: flex; align-items: center; gap: 10px; }
+
+        .btn-header { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+
+        .btn-header:hover { background: var(--bg-card-hover); border-color: var(--accent-cyan); }
+
+        .btn-header:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-primary { background: linear-gradient(135deg, #0284c7, #0369a1); border: none; color: white; }
+
+        .app-body { display: flex; flex: 1; width: 100%; height: calc(100vh - 64px); position: relative; overflow: hidden; }
+
+        #sidebar { width: var(--sidebar-width); min-width: var(--sidebar-width); background: var(--bg-sidebar); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 1000; height: 100%; }
+
+        .sidebar-tabs { display: flex; background: #030712; border-bottom: 1px solid var(--border-color); }
+
+        .sidebar-tab { flex: 1; padding: 12px 4px; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+
+        .sidebar-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); background: rgba(6, 182, 212, 0.05); }
+
+        .sidebar-tab i { display: block; font-size: 14px; margin-bottom: 3px; }
+
+        .tab-content { flex: 1; overflow-y: auto; padding: 16px; display: none; }
+
+        .tab-content.active { display: block; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+
+        .kpi-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; position: relative; overflow: hidden; }
+
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent-cyan); }
+
+        .kpi-card.red::before { background: var(--accent-red); }
+
+        .kpi-card.orange::before { background: var(--accent-orange); }
+
+        .kpi-card.purple::before { background: var(--accent-purple); }
+
+        .kpi-title { font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+
+        .kpi-value { font-size: 20px; font-weight: 700; color: var(--text-main); margin-top: 2px; }
+
+        .kpi-sub { font-size: 10px; color: var(--text-muted); }
+
+        .alert-box { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 10px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; }
+
+        .alert-box i { color: var(--accent-red); font-size: 16px; margin-top: 2px; }
+
+        .alert-box-title { font-size: 12px; font-weight: 600; color: #fca5a5; }
+
+        .alert-box-desc { font-size: 11px; color: #cbd5e1; margin-top: 2px; }
+
+        .section-title { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin: 14px 0 8px 0; display: flex; align-items: center; justify-content: space-between; }
+
+        .form-group { margin-bottom: 12px; }
+
+        .form-group label { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
+
+        .form-control { width: 100%; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 10px; border-radius: 6px; font-size: 12px; font-family: inherit; }
+
+        .form-control:focus { outline: none; border-color: var(--accent-cyan); }
+
+        .range-container { display: flex; align-items: center; gap: 10px; }
+
+        .range-container input[type="range"] { flex: 1; accent-color: var(--accent-orange); }
+
+        .range-value { font-weight: 600; font-size: 12px; color: var(--accent-orange); min-width: 45px; text-align: right; }
+
+        .aoi-list { max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card); }
+
+        .aoi-item { padding: 8px 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+
+        .aoi-item:last-child { border-bottom: none; }
+
+        .aoi-item:hover { background: var(--bg-card-hover); }
+
+        .aoi-item.has-fire { border-left: 4px solid var(--accent-red); background: rgba(239, 68, 68, 0.05); }
+
+        .aoi-name { font-size: 11px; font-weight: 600; }
+
+        .aoi-subtext { font-size: 10px; color: var(--text-muted); }
+
+        .badge-fire-count { background: var(--accent-red); color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+
+        #map-container { flex: 1; position: relative; width: 100%; height: 100%; background: #111; }
+
+        #map { width: 100%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; right: 0; background: #000; }
+
+        .map-floating-panel { position: absolute; top: 15px; right: 15px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
+
+        .map-floating-btn { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+
+        .legend-card { position: absolute; bottom: 20px; right: 15px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; z-index: 1000; font-size: 11px; min-width: 210px; }
+
+        .legend-title { font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
+
+        .legend-bar { height: 8px; border-radius: 4px; background: linear-gradient(to right, #facc15, #f97316, #ef4444, #a855f7); margin-bottom: 4px; }
+
+        .legend-labels { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 9px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 2000; }
+
+        .modal-card { background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 12px; width: 90%; max-width: 680px; max-height: 85vh; overflow-y: auto; padding: 20px; }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px; }
+
+        .modal-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+
+        .leaflet-popup-content-wrapper { background: #1e293b !important; color: #f8fafc !important; border: 1px solid #475569; border-radius: 8px !important; }
+
+        .leaflet-popup-tip { background: #1e293b !important; }
+
+        .popup-header { font-size: 12px; font-weight: 700; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+
+        .popup-row { font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 3px; color: #cbd5e1; }
+
+        .popup-row strong { color: #94a3b8; }
+
+        #coords-display { position: absolute; bottom: 6px; left: 6px; background: rgba(15, 23, 42, 0.85); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-family: monospace; color: var(--accent-cyan); border: 1px solid var(--border-color); z-index: 1000; pointer-events: none; }
+
+        .leaflet-control-layers { background: rgba(15, 23, 42, 0.95) !important; color: #f8fafc !important; border: 1px solid #334155 !important; border-radius: 8px !important; padding: 8px 12px !important; }
+
+        .leaflet-control-layers-base label { margin-bottom: 4px; display: block; cursor: pointer; font-size: 12px; }
+
+    </style>
+
+</head>
+
+﻿<body>
+
+    <header>
+
+        <div class="brand">
+
+            <div class="brand-logo"><i class="fa-solid fa-fire-flame-curved"></i></div>
+
+            <div>
+
+                <div class="brand-title">GEOPORTAL CSN • QUEIMADAS</div>
+
+                <div class="brand-subtitle"><i class="fa-solid fa-satellite"></i> VIIRS NOAA-21 (375m) • 24h</div>
+
+            </div>
+
+        </div>
+
+        <div class="clock-container">
+
+            <div class="clock-item">
+
+                <div class="clock-label"><i class="fa-solid fa-location-dot"></i> Horário de Brasília (UTC-3)</div>
+
+                <div class="clock-time brasilia" id="clock-brt">--:--:-- BRT</div>
+
+                <div class="clock-date" id="date-brt">--/--/----</div>
+
+            </div>
+
+            <div class="clock-divider"></div>
+
+            <div class="clock-item">
+
+                <div class="clock-label"><i class="fa-solid fa-globe"></i> Tempo Universal (UTC/GMT)</div>
+
+                <div class="clock-time" id="clock-utc">--:--:-- UTC</div>
+
+                <div class="clock-date" id="date-utc">--/--/----</div>
+
+            </div>
+
+        </div>
+
+        <div class="header-actions">
+
+            
+
+            <button class="btn-header btn-primary" id="btn-atualizar-focos" style="background-color: #ef4444; color: white;" onclick="atualizarFocosBackendProxy()"><i class="fa-solid fa-rotate"></i> Atualizar Focos (Proxy)</button>
+
+            <button class="btn-header" onclick="abrirRelatorio()"><i class="fa-solid fa-file-pdf"></i> Relatório</button>
+
+        </div>
+
+    </header>
+
+    <div class="app-body">
+
+        <div id="sidebar">
+
+            <div class="sidebar-tabs">
+
+                <div class="sidebar-tab active" onclick="switchTab('tab-dash', this)"><i class="fa-solid fa-chart-pie"></i> Painel</div>
+
+                <div class="sidebar-tab" onclick="switchTab('tab-filtros', this)"><i class="fa-solid fa-sliders"></i> Filtros</div>
+
+                <div class="sidebar-tab" onclick="switchTab('tab-aoi', this)"><i class="fa-solid fa-draw-polygon"></i> AOIs</div>
+
+                <div class="sidebar-tab" onclick="switchTab('tab-layers', this)"><i class="fa-solid fa-folder-tree"></i> Drive</div>
+
+                <div class="sidebar-tab" onclick="switchTab('tab-graficos', this)"><i class="fa-solid fa-chart-column"></i> Gráficos</div>
+
+            </div>
+
+            <div id="tab-dash" class="tab-content active">
+
+                <div id="critical-alert-box" class="alert-box" style="display: none;">
+
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+
+                    <div>
+
+                        <div class="alert-box-title">ALERTA CRÍTICO DE INCÊNDIO</div>
+
+                        <div class="alert-box-desc" id="alert-box-text">Detectados focos com FRP > 10 MW nas fazendas!</div>
+
+                    </div>
+
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card red"><div class="kpi-title">Focos na AOI</div><div class="kpi-value" id="kpi-focos-aoi">0</div><div class="kpi-sub">Dentro das Propriedades</div></div>
+                    <div class="kpi-card red"><div class="kpi-title">Maior FRP na AOI</div><div class="kpi-value" id="kpi-max-frp-aoi">0.0 <span style="font-size:10px;">MW</span></div><div class="kpi-sub">Potência Máxima na Área</div></div>
+                    <div class="kpi-card purple"><div class="kpi-title">Fazendas Atingidas</div><div class="kpi-value" id="kpi-aoi-atingidas">0</div><div class="kpi-sub">De 100 cadastradas</div></div>
+                    <div class="kpi-card orange"><div class="kpi-title">Status de Risco</div><div class="kpi-value" id="kpi-status-risco" style="font-size:15px;">NORMAL</div><div class="kpi-sub">Critério Operacional</div></div>
+                </div>
+                <div style="font-size:10px; text-transform:uppercase; font-weight:700; color:#94a3b8; margin-bottom:6px; display:flex; align-items:center; gap:6px; margin-top:10px;">
+                    <i class="fa-solid fa-earth-americas"></i> Contexto Regional (Fora da Área)
+                </div>
+                <div class="kpi-grid">
+                    <div class="kpi-card" style="border-color:#475569;"><div class="kpi-title">Focos Fora da AOI</div><div class="kpi-value" id="kpi-focos-fora">0</div><div class="kpi-sub">Focos no Raio Regional</div></div>
+                    <div class="kpi-card" style="border-color:#475569;"><div class="kpi-title">Maior FRP Regional</div><div class="kpi-value" id="kpi-max-frp-fora">0.0 <span style="font-size:10px;">MW</span></div><div class="kpi-sub">FRP Máx Externo</div></div>
+                </div>
+
+                <div class="section-title"><span>Áreas Afetadas com Alerta</span><i class="fa-solid fa-list-check"></i></div>
+
+                <div class="aoi-list" id="lista-afetadas">
+
+                    <div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 11px;">Carregando focos...</div>
+
+                </div>
+
+            </div>
+
+            <div id="tab-filtros" class="tab-content">
+
+                <div class="form-group">
+
+                    <label><i class="fa-solid fa-bolt"></i> Filtro de Potência FRP Mínimo (MW):</label>
+
+                    <div class="range-container">
+
+                        <input type="range" id="slider-frp" min="0" max="80" value="10" step="1" oninput="atualizarFiltros()">
+
+                        <div class="range-value" id="val-frp">10 MW</div>
+
+                    </div>
+
+                    <small style="font-size: 10px; color: var(--accent-cyan);">* Critério CSN: Alerta para FRP > 10 MW.</small>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label><i class="fa-solid fa-shield-halved"></i> Confiança:</label>
+
+                    <select class="form-control" id="select-confianca" onchange="atualizarFiltros()">
+
+                        <option value="todos">Todos (Baixa, Nominal, Alta)</option>
+
+                        <option value="nominal_alta" selected>Apenas Nominal & Alta</option>
+
+                        <option value="alta">Apenas Alta Confiança (h)</option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label><i class="fa-solid fa-sun"></i> Período:</label>
+
+                    <select class="form-control" id="select-daynight" onchange="atualizarFiltros()">
+
+                        <option value="todos" selected>Dia e Noite (24h)</option>
+
+                        <option value="D">Apenas Diurno (D)</option>
+
+                        <option value="N">Apenas Noturno (N)</option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+            <div id="tab-aoi" class="tab-content">
+
+                <div class="form-group"><input type="text" class="form-control" placeholder="🔍 Buscar fazenda ou município..." onkeyup="filtrarListaAOI(this.value)"></div>
+
+                <div class="section-title"><span>Fazendas Cadastradas (<span id="count-aoi-total">91</span>)</span></div>
+
+                <div class="aoi-list" id="lista-completa-aoi"></div>
+
+            </div>
+
+            <div id="tab-layers" class="tab-content">
+
+                <div class="section-title"><span>Camadas do Google Drive</span><i class="fa-solid fa-folder-tree"></i></div>
+
+                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Pasta: <code>DADOS para deskbord</code></p>
+
+                <div id="drive-layers-list" style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;"></div>
+
+            </div>
+
+            <div id="tab-graficos" class="tab-content">
+
+                <div class="section-title">Distribuição por Faixa de FRP</div>
+
+                <div style="height: 150px; margin-bottom: 12px;"><canvas id="chartFRP"></canvas></div>
+
+                <div class="section-title">Focos por Unidade / Município</div>
+
+                <div style="height: 150px;"><canvas id="chartMunicipios"></canvas></div>
+
+            </div>
+
+        </div>
+
+        <div id="map-container">
+
+            <div id="map"></div>
+
+            <div class="map-floating-panel">
+
+                <button class="map-floating-btn" onclick="centralizarTodasAOIs()"><i class="fa-solid fa-expand"></i> Enquadrar AOIs</button>
+
+            </div>
+
+            <div class="legend-card">
+
+                <div class="legend-title"><span><i class="fa-solid fa-layer-group"></i> Potência FRP (MW)</span></div>
+
+                <div class="legend-bar"></div>
+
+                <div class="legend-labels"><span>&lt; 5 MW</span><span>10 (Alerta)</span><span>25</span><span>&gt; 50</span></div>
+
+            </div>
+
+            <div id="coords-display">Lat: 0.0000 | Lon: 0.0000 | Zoom: 0</div>
+
+        </div>
+
+    </div>
+
+    <div id="modal-relatorio" class="modal-overlay">
+
+        <div class="modal-card">
+
+            <div class="modal-header">
+
+                <div style="font-weight:700;"><i class="fa-solid fa-file-shield"></i> Boletim Diário de Queimadas • CSN</div>
+
+                <button class="modal-close" onclick="fecharModal()">&times;</button>
+
+            </div>
+
+            <div id="relatorio-conteudo" style="font-size: 11px; line-height: 1.5;"></div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px; border-top:1px solid var(--border-color); padding-top:8px;">
+
+                <button class="btn-header" onclick="fecharModal()">Fechar</button>
+
+                <button class="btn-header btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir / PDF</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="data_aoi.js"></script>
+
+﻿    <script>
+
+        // 4. REAL-TIME CLOCK (UTC & BRASÍLIA UTC-3)
+
+        function updateClocks() {
+
+            const now = new Date();
+
+            const utcHours = String(now.getUTCHours()).padStart(2, '0');
+
+            const utcMinutes = String(now.getUTCMinutes()).padStart(2, '0');
+
+            const utcSeconds = String(now.getUTCSeconds()).padStart(2, '0');
+
+            const utcDay = String(now.getUTCDate()).padStart(2, '0');
+
+            const utcMonth = String(now.getUTCMonth() + 1).padStart(2, '0');
+
+            const utcYear = now.getUTCFullYear();
+
+            document.getElementById('clock-utc').innerText = `${utcHours}:${utcMinutes}:${utcSeconds} UTC`;
+
+            document.getElementById('date-utc').innerText = `${utcDay}/${utcMonth}/${utcYear}`;
+
+
+
+            const brtFormatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+
+            const brtDateFormatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            document.getElementById('clock-brt').innerText = `${brtFormatter.format(now)} BRT`;
+
+            document.getElementById('date-brt').innerText = brtDateFormatter.format(now);
+
+        }
+
+        setInterval(updateClocks, 1000);
+
+        updateClocks();
+
+
+
+        // 2. MAPA & 3 BASEMAPS ESSENCIAIS
+
+        const map = L.map('map', { center: [-12.82, -40.56], zoom: 6, zoomControl: false, layers: [] });
+
+        map.createPane('googleSatellite'); map.getPane('googleSatellite').style.zIndex = 200; 
+        map.createPane('camadaBuffers'); map.getPane('camadaBuffers').style.zIndex = 300; 
+        map.createPane('camadaFazendas'); map.getPane('camadaFazendas').style.zIndex = 400; 
+        map.createPane('camadaFocos'); map.getPane('camadaFocos').style.zIndex = 500; 
+        
+        let googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], pane: 'googleSatellite'}).addTo(map);
+        let openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, pane: 'googleSatellite'});
+        let layerGroupAOI = L.featureGroup().addTo(map);
+        let layerGroupBuffers = L.featureGroup().addTo(map);
+        let layerGroupFocos = L.featureGroup().addTo(map);
+        let layerHeat = L.layerGroup().addTo(map);
+        
+        let controlBaseMaps = { "Google Satélite (Chão)": googleSat, "Rodovias/Ruas (OSM)": openStreetMap };
+        let controlOverlayMaps = { "Áreas/Fazendas": layerGroupAOI, "Buffers (5km)": layerGroupBuffers, "Focos NASA": layerGroupFocos, "Mapa de Calor": layerHeat };
+        L.control.layers(controlBaseMaps, controlOverlayMaps, {collapsed: false, position: 'topright'}).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+
+        
+
+
+
+        
+
+
+
+        
+
+
+
+        
+
+
+
+        // Adiciona Google Satellite como a camada ativa padrão
+
+        googleSat.addTo(map);
+
+
+
+        
+
+        
+
+
+
+        setTimeout(() => { map.invalidateSize(); }, 200);
+
+        window.addEventListener('resize', () => { map.invalidateSize(); });
+
+
+
+        map.on('mousemove', e => {
+
+            document.getElementById('coords-display').innerText = `Lat: ${e.latlng.lat.toFixed(5)} | Lon: ${e.latlng.lng.toFixed(5)} | Zoom: ${map.getZoom()}`;
+
+        });
+
+
+
+        
+
+
+
+        
+
+        
+
+        let allFocos = [];
+
+        let intersectedFocos = [];
+
+        let chartFRPInstance = null;
+
+        let chartMunInstance = null;
+
+
+
+        
+        function addFeaturesToMap(features) {
+            features.forEach(f => {
+                const isBuffer = ((f.properties && f.properties.source_layer) ? f.properties.source_layer.toLowerCase() : '').includes('buffer');
+                let geoLayer = L.geoJSON(f, {
+                    style: isBuffer ? { color: "#FFA500", weight: 2, dashArray: "5, 5", opacity: 0.8, fillColor: "#FFA500", fillOpacity: 0.15 } : { color: "#FF0000", weight: 2.5, opacity: 0.95, fillColor: "#FF0000", fillOpacity: 0.3 },
+                    pane: isBuffer ? 'camadaBuffers' : 'camadaFazendas',
+                    onEachFeature: (feature, layer) => {
+                        const p = feature.properties;
+                        const nome = p.FAZENDA || p.name || p.COD || 'Área sem nome';
+                        const area = p.AREA_ha ? `${parseFloat(p.AREA_ha).toLocaleString('pt-BR')} ha` : '';
+                        layer.bindTooltip(`<b>${nome}</b><br><small>${p.Municipio || p.source_layer || '-'} ${area ? ' | ' + area : ''}</small>`, { sticky: true });
+                        layer.on({ mouseover: e => e.target.setStyle({ weight: 4, color: '#f59e0b', fillOpacity: 0.4 }), mouseout: e => geoLayer.resetStyle(e.target), click: e => map.fitBounds(e.target.getBounds(), { padding: [40, 40] }) });
+                    }
+                });
+                isBuffer ? layerGroupBuffers.addLayer(geoLayer) : layerGroupAOI.addLayer(geoLayer);
+            });
+        }
+
+        function carregarAOIs() {
+
+            if (window.AOI_GEOJSON) {
+
+                addFeaturesToMap(window.AOI_GEOJSON.features);
+
+                renderizarListaAOI(window.AOI_GEOJSON.features);
+
+                centralizarTodasAOIs();
+
+            }
+
+            carregarCatalogoCamadasDrive();
+
+        }
+
+
+
+        function centralizarTodasAOIs() {
+
+            if (layerGroupAOI.getLayers().length > 0) map.fitBounds(layerGroupAOI.getBounds(), { padding: [30, 30] });
+
+        }
+
+
+
+        function renderizarListaAOI(features) {
+
+            const container = document.getElementById('lista-completa-aoi');
+
+            document.getElementById('count-aoi-total').innerText = features.length;
+
+            container.innerHTML = '';
+
+            features.forEach((feat, idx) => {
+
+                const p = feat.properties;
+
+                const nome = p.FAZENDA || p.name || `Área #${idx + 1}`;
+
+                const mun = p.Municipio || p.source_layer || '';
+
+                const div = document.createElement('div');
+
+                div.className = 'aoi-item';
+
+                div.innerHTML = `<div><div class="aoi-name">${nome}</div><div class="aoi-subtext">${mun}</div></div><i class="fa-solid fa-crosshairs" style="color:var(--text-muted);"></i>`;
+
+                div.onclick = () => { map.fitBounds(L.geoJSON(feat).getBounds(), { maxZoom: 14 }); };
+
+                container.appendChild(div);
+
+            });
+
+        }
+
+
+
+        function filtrarListaAOI(q) {
+
+            const query = q.toLowerCase();
+
+            document.querySelectorAll('#lista-completa-aoi .aoi-item').forEach(it => {
+
+                it.style.display = it.innerText.toLowerCase().includes(query) ? 'flex' : 'none';
+
+            });
+
+        }
+
+
+
+        async function carregarCatalogoCamadasDrive() {
+
+            const listDiv = document.getElementById('drive-layers-list');
+
+            try {
+
+                const resp = await fetch('/api/layers');
+
+                if (resp.ok) {
+
+                    const catalog = await resp.json();
+
+                    listDiv.innerHTML = catalog.map(cat => `
+
+                        <div style="background: var(--bg-card); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+
+                            <div><div style="font-weight:600; color:#38bdf8;">${cat.name}</div><div style="font-size:9px; color:var(--text-muted);">${cat.features_count} feições • ${cat.geometry_type}</div></div>
+
+                            <span style="font-size:8px; background:rgba(16,185,129,0.2); color:var(--accent-green); padding:1px 4px; border-radius:3px;">GeoJSON</span>
+
+                        </div>
+
+                    `).join('');
+
+                }
+
+            } catch (e) {
+
+                listDiv.innerHTML = '<div style="color: var(--text-muted);">Camadas do Drive disponíveis.</div>';
+
+            }
+
+        }
+
+
+
+        async function sincronizarDriveViaAPI() {
+
+            try {
+
+                const resp = await fetch('/api/sync-drive');
+
+                const res = await resp.json();
+
+                if (res.status === 'success') {
+
+                    alert(`Sucesso! ${res.layers_count} camadas sincronizadas (${res.total_aoi_polygons} polígonos).`);
+
+                    window.location.reload();
+
+                } else {
+
+                    alert(`Aviso: ${res.message}`);
+
+                }
+
+            } catch (e) {
+                console.error(e);
+                alert('Erro ao sincronizar: ' + e.message);
+            }
+        }
+
+        // 1. CONSULTA NASA FIRMS NOAA-21 VIA PROXY BACKEND
+        async function atualizarFocosBackendProxy() {
+            const btn = document.getElementById('btn-atualizar-focos');
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Consultando NASA NOAA-21...';
+                btn.disabled = true;
+            }
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+                const resp = await fetch('/api/focos/24h', { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!resp.ok) {
+                    throw new Error(`Servidor retornou HTTP ${resp.status}: ${resp.statusText}`);
+                }
+
+                const data = await resp.json();
+
+                if (data.focos && data.focos.length > 0) {
+                    processarFocos(data.focos);
+                    console.log(`✅ [NASA FIRMS] ${data.focos.length} focos reais NOAA-21 recebidos (${data.source || 'NASA'}).`);
+                } else {
+                    console.warn('⚠️ [NASA VAZIO] Nenhum foco registrado nas últimas 24h na região.');
+                    processarFocos([]);
+                }
+            } catch (err) {
+                console.error('❌ [NASA ERRO]', err);
+                alert('Aviso na consulta à NASA FIRMS: ' + err.message);
+                processarFocos([]);
+            } finally {
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Atualizar Focos (Proxy)';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        function processarFocos(focosData) {
+            allFocos = focosData || [];
+            layerGroupFocos.clearLayers();
+            if (layerHeat) {
+                layerHeat.clearLayers();
+            }
+
+            const minFRP = parseFloat(document.getElementById('slider-frp').value) || 0;
+            const confianca = document.getElementById('select-confianca').value;
+            const daynight = document.getElementById('select-daynight').value;
+
+            let filtrados = allFocos.filter(f => {
+                if (f.frp < minFRP) return false;
+                if (confianca === 'alta' && f.confidence !== 'h' && f.confidence !== 'high') return false;
+                if (confianca === 'nominal_alta' && f.confidence === 'l') return false;
+                if (daynight !== 'todos' && f.daynight !== daynight) return false;
+                return true;
+            });
+
+            intersectedFocos = [];
+            let totalAOI = 0;
+            let maxFRP_AOI = 0;
+            let totalFora = 0;
+            let maxFRP_Fora = 0;
+            let aoiMap = {};
+            let heatPoints = [];
+            const aoiFeatures = (window.AOI_GEOJSON && window.AOI_GEOJSON.features) ? window.AOI_GEOJSON.features : [];
+
+            filtrados.forEach(f => {
+                let estaDentro = Boolean(f.dentro_aoi);
+                let aoiNome = f.aoi_nome || null;
+                let aoiMun = f.aoi_municipio || null;
+
+                // Validação espacial local caso necessário
+                if (!estaDentro && aoiFeatures.length > 0 && typeof turf !== 'undefined') {
+                    const pt = turf.point([f.longitude, f.latitude]);
+                    for (let aoi of aoiFeatures) {
+                        if (turf.booleanPointInPolygon(pt, aoi)) {
+                            estaDentro = true;
+                            aoiNome = aoi.properties.FAZENDA || aoi.properties.name || aoi.properties.COD || 'Área CSN';
+                            aoiMun = aoi.properties.Municipio || aoi.properties.UF || '-';
+                            break;
+                        }
+                    }
+                }
+
+                if (estaDentro) {
+                    totalAOI++;
+                    if (f.frp > maxFRP_AOI) maxFRP_AOI = f.frp;
+                    if (!aoiNome) aoiNome = 'Área CSN';
+                    if (!aoiMap[aoiNome]) {
+                        aoiMap[aoiNome] = { count: 0, maxFRP: 0, mun: aoiMun || '-', lat: f.latitude, lon: f.longitude };
+                    }
+                    aoiMap[aoiNome].count++;
+                    if (f.frp > aoiMap[aoiNome].maxFRP) aoiMap[aoiNome].maxFRP = f.frp;
+                    f.dentro_aoi = true;
+                    f.aoi_nome = aoiNome;
+                    f.aoi_municipio = aoiMun;
+                    intersectedFocos.push(f);
+                } else {
+                    totalFora++;
+                    if (f.frp > maxFRP_Fora) maxFRP_Fora = f.frp;
+                }
+
+                heatPoints.push([f.latitude, f.longitude, Math.min(f.frp / 50, 1)]);
+
+                const cor = obterCorFRP(f.frp);
+                const marker = L.circleMarker([f.latitude, f.longitude], {
+                    radius: f.frp > 30 ? 8 : (f.frp > 10 ? 6 : 4.5),
+                    fillColor: cor,
+                    color: estaDentro ? '#ffffff' : '#1e293b',
+                    weight: estaDentro ? 2.5 : 1,
+                    opacity: 1,
+                    fillOpacity: 0.85,
+                    pane: 'camadaFocos'
+                });
+
+                marker.bindPopup(`
+                    <div class="popup-header"><span>🔥 VIIRS NOAA-21 (375m)</span><span style="color:${cor};font-weight:700;">FRP ${f.frp.toFixed(1)} MW</span></div>
+                    <div class="popup-row"><strong>Status:</strong> <span style="color:${estaDentro ? '#ef4444':'#10b981'};font-weight:700;">${estaDentro ? aoiNome : 'Fora da AOI'}</span></div>
+                    ${estaDentro ? `<div class="popup-row"><strong>Município:</strong> <span>${aoiMun || '-'}</span></div>` : ''}
+                    <div class="popup-row"><strong>Data/Hora:</strong> <span>${f.acq_date} ${f.acq_time} UTC</span></div>
+                    <div class="popup-row"><strong>Confiança:</strong> <span>${f.confidence}</span></div>
+                    <div class="popup-row"><strong>Coordenadas:</strong> <span>${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</span></div>
+                `);
+
+                layerGroupFocos.addLayer(marker);
+            });
+
+            if (heatPoints.length > 0 && typeof L.heatLayer === 'function' && layerHeat) {
+                const heat = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 12 });
+                layerHeat.addLayer(heat);
+            }
+
+            atualizarDashboardUI(totalAOI, maxFRP_AOI, totalFora, maxFRP_Fora, aoiMap);
+            atualizarGraficos(filtrados, aoiMap);
+        }
+
+        function obterCorFRP(frp) {
+            if (frp >= 50) return '#a855f7';
+            if (frp >= 20) return '#ef4444';
+            if (frp >= 10) return '#f97316';
+            return '#facc15';
+        }
+
+        function atualizarDashboardUI(totalAOI, maxFRP_AOI, totalFora, maxFRP_Fora, aoiMap) {
+            document.getElementById('kpi-focos-aoi').innerText = totalAOI;
+            const mFrpElem = document.getElementById('kpi-max-frp-aoi');
+            if (mFrpElem) mFrpElem.innerHTML = `${maxFRP_AOI.toFixed(1)} <span style="font-size:10px">MW</span>`;
+            
+            const numAtingidas = Object.keys(aoiMap).length;
+            document.getElementById('kpi-aoi-atingidas').innerText = numAtingidas;
+
+            const statusElem = document.getElementById('kpi-status-risco');
+            if (statusElem) {
+                if (totalAOI > 0 || maxFRP_AOI >= 10) {
+                    statusElem.innerText = 'CRÍTICO';
+                    statusElem.style.color = '#ef4444';
+                } else {
+                    statusElem.innerText = 'NORMAL';
+                    statusElem.style.color = '#10b981';
+                }
+            }
+
+            const elemFora = document.getElementById('kpi-focos-fora');
+            if (elemFora) elemFora.innerText = totalFora;
+            const elemMaxFora = document.getElementById('kpi-max-frp-fora');
+            if (elemMaxFora) elemMaxFora.innerHTML = `${maxFRP_Fora.toFixed(1)} <span style="font-size:10px">MW</span>`;
+
+            const alertBox = document.getElementById('critical-alert-box');
+            if (alertBox) {
+                if (totalAOI > 0) {
+                    alertBox.style.display = 'flex';
+                    const abt = document.getElementById('alert-box-text');
+                    if (abt) abt.innerText = `${totalAOI} foco(s) detectados dentro das fazendas! Maior FRP na propriedade: ${maxFRP_AOI.toFixed(1)} MW.`;
+                } else {
+                    alertBox.style.display = 'none';
+                }
+            }
+
+            const container = document.getElementById('lista-afetadas');
+            if (container) {
+                if (numAtingidas === 0) {
+                    container.innerHTML = `<div style="padding:15px; text-align:center; color:var(--accent-green); font-size:11px;"><i class="fa-solid fa-circle-check" style="font-size:20px; margin-bottom:4px; display:block;"></i>Nenhuma área atingida nas últimas 24h.</div>`;
+                } else {
+                    container.innerHTML = '';
+                    Object.keys(aoiMap).forEach(nome => {
+                        const info = aoiMap[nome];
+                        const div = document.createElement('div');
+                        div.className = 'aoi-item has-fire';
+                        div.title = 'Clique para ver os limites da propriedade no mapa';
+                        div.innerHTML = `<div><div class="aoi-name" style="color:#fca5a5;">${nome}</div><div class="aoi-subtext">${info.mun} • FRP Máx na Área: <b>${info.maxFRP.toFixed(1)} MW</b></div></div><span class="badge-fire-count">${info.count}</span>`;
+                        div.addEventListener('click', function() {
+                            if (window.AOI_GEOJSON) {
+                                const features = window.AOI_GEOJSON.features.filter(feat => {
+                                    const p = feat.properties;
+                                    return (p.FAZENDA || p.name || p.COD || '') === nome;
+                                });
+                                if (features.length > 0) {
+                                    map.fitBounds(L.geoJSON(features).getBounds(), { padding: [40, 40] });
+                                } else if (info.lat && info.lon) {
+                                    map.flyTo([info.lat, info.lon], 14);
+                                }
+                            }
+                        });
+                        container.appendChild(div);
+                    });
+                }
+            }
+        }
+
+        function atualizarGraficos(focos, aoiMap) {
+            const faixas = { '0-5': 0, '5-10': 0, '10-25': 0, '25-50': 0, '> 50': 0 };
+            focos.forEach(f => {
+                if (f.frp < 5) faixas['0-5']++;
+                else if (f.frp < 10) faixas['5-10']++;
+                else if (f.frp < 25) faixas['10-25']++;
+                else if (f.frp < 50) faixas['25-50']++;
+                else faixas['> 50']++;
+            });
+
+            const elemChartFRP = document.getElementById('chartFRP');
+            if (elemChartFRP) {
+                const ctxFRP = elemChartFRP.getContext('2d');
+                if (chartFRPInstance) chartFRPInstance.destroy();
+                chartFRPInstance = new Chart(ctxFRP, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(faixas),
+                        datasets: [{
+                            label: 'Focos',
+                            data: Object.values(faixas),
+                            backgroundColor: ['#facc15', '#fde047', '#f97316', '#ef4444', '#a855f7'],
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', font: { size: 9 } } },
+                            y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#334155' } }
+                        }
+                    }
+                });
+            }
+
+            const elemChartMun = document.getElementById('chartMunicipios');
+            if (elemChartMun) {
+                const labelsMun = Object.keys(aoiMap).slice(0, 5);
+                const dataMun = labelsMun.map(k => aoiMap[k].count);
+                const ctxMun = elemChartMun.getContext('2d');
+                if (chartMunInstance) chartMunInstance.destroy();
+                chartMunInstance = new Chart(ctxMun, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labelsMun.length > 0 ? labelsMun : ['Sem Focos na AOI'],
+                        datasets: [{
+                            data: dataMun.length > 0 ? dataMun : [1],
+                            backgroundColor: ['#ef4444', '#f97316', '#06b6d4', '#8b5cf6', '#10b981'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#94a3b8', font: { size: 9 } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function abrirRelatorio() {
+            const dataHoje = new Date().toLocaleDateString('pt-BR');
+            let tabela = '';
+
+            if (intersectedFocos.length > 0) {
+                tabela = `
+                    <table style="width:100%; border-collapse:collapse; margin-top:8px;">
+                        <thead><tr style="background:#1e293b; border-bottom:2px solid #475569;"><th style="padding:6px; text-align:left;">Fazenda</th><th style="padding:6px; text-align:center;">FRP</th><th style="padding:6px; text-align:center;">Hora</th><th style="padding:6px; text-align:center;">Coordenadas</th></tr></thead>
+                        <tbody>${intersectedFocos.map(f => `<tr style="border-bottom:1px solid #334155;"><td style="padding:6px; color:#06b6d4; font-weight:600;">${f.aoi_nome || '-'}</td><td style="padding:6px; text-align:center; font-weight:700; color:${obterCorFRP(f.frp)};">${f.frp.toFixed(1)} MW</td><td style="padding:6px; text-align:center;">${f.acq_time}</td><td style="padding:6px; text-align:center; font-family:monospace;">${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</td></tr>`).join('')}</tbody>
+                    </table>`;
+            } else {
+                tabela = '<p style="color:#10b981; margin-top:8px; text-align:center;"><b>Status Verde:</b> Nenhum foco dentro das propriedades nas últimas 24h.</p>';
+            }
+
+            const kpiAoiVal = document.getElementById('kpi-focos-aoi') ? document.getElementById('kpi-focos-aoi').innerText : '0';
+            const kpiMaxFrpVal = document.getElementById('kpi-max-frp-aoi') ? document.getElementById('kpi-max-frp-aoi').innerText : '0.0 MW';
+
+            document.getElementById('relatorio-conteudo').innerHTML = `
+                <div style="text-align:center; border-bottom:1px solid var(--border-color); padding-bottom:6px; margin-bottom:8px;">
+                    <h3 style="font-size:14px; color:#f8fafc;">BOLETIM DE QUEIMADAS CSN • NOAA-21 (24h)</h3>
+                    <small style="color:var(--text-muted);">Data: ${dataHoje} | Horário de Brasília (UTC-3)</small>
+                </div>
+                <div style="display:flex; justify-content:space-around; background:#1e293b; padding:8px; border-radius:6px; text-align:center; margin-bottom:10px;">
+                    <div><small style="color:#ef4444; font-weight:700;">NA AOI</small><div style="font-weight:bold; font-size:16px; color:#ef4444;">${kpiAoiVal}</div></div>
+                    <div><small style="color:#f59e0b; font-weight:700;">MAIOR FRP NA AOI</small><div style="font-weight:bold; font-size:16px; color:#f59e0b;">${kpiMaxFrpVal}</div></div>
+                </div>
+                ${tabela}
+            `;
+
+            document.getElementById('modal-relatorio').style.display = 'flex';
+        }
+
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.sidebar-tab').forEach(s => s.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            el.classList.add('active');
+        }
+
+        function atualizarFiltros() {
+            const val = document.getElementById('slider-frp').value;
+            document.getElementById('val-frp').innerText = `${val} MW`;
+            if (allFocos.length > 0) processarFocos(allFocos);
+        }
+
+        function fecharModal() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+        }
+
+        window.onload = () => {
+            carregarAOIs();
+            atualizarFocosBackendProxy();
+        };
+
+    </script>
+
+</body>
+
+</html>
+

@@ -1,0 +1,10 @@
+{
+"type": "FeatureCollection",
+"name": "Area fazenda serra vermelha -FSV ",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::32723" } },
+"xy_coordinate_resolution": 1e-15,
+"features": [
+{"type":"Feature","properties":{"fid":1,"id":null,"Name":"Polígono sem título","description":null,"timestamp":null,"begin":null,"end":null,"altitudeMode":null,"tessellate":1,"extrude":0,"visibility":-1,"drawOrder":null,"icon":null,"AREA_HA":147.93927584131094},"geometry":{"type":"Point","coordinates":[1376178.282607068074867,9439743.885085348039865]}},
+{"type":"Feature","properties":{"fid":2,"id":null,"Name":"Polígono sem título","description":null,"timestamp":null,"begin":null,"end":null,"altitudeMode":null,"tessellate":1,"extrude":0,"visibility":-1,"drawOrder":null,"icon":null,"AREA_HA":1393.141786119061},"geometry":{"type":"Point","coordinates":[1377612.945627380395308,9437403.187837388366461]}}
+]
+}
