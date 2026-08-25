@@ -1,0 +1,288 @@
+{
+  "IÉU (GMFC)": [
+    {
+      "codigo": "A234.1",
+      "data": "20/07/20206",
+      "focos": 1.0,
+      "classificacao": "Crítico"
+    }
+  ],
+  "MILAGROSO": [
+    {
+      "codigo": "A234.2",
+      "data": "2026-08-02 00:00:00",
+      "focos": 13.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "BOQUEIRÃO": [
+    {
+      "codigo": "A234.2",
+      "data": "2026-08-02 00:00:00",
+      "focos": 13.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.3",
+      "data": "2026-08-03 00:00:00",
+      "focos": 3.0,
+      "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.6",
+      "data": "2026-08-07 00:00:00",
+      "focos": 10.0,
+      "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.20",
+      "data": "2026-08-22 00:00:00",
+      "focos": 27.0,
+      "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.21",
+      "data": "2026-08-23 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.22",
+      "data": "2026-08-24 00:00:00",
+      "focos": 13.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.23",
+      "data": "2026-08-25 00:00:00",
+      "focos": 7.0,
+      "classificacao": "Crítico"
+    }
+  ],
+  "AREIA": [
+    {
+      "codigo": "A234.2",
+      "data": "2026-08-02 00:00:00",
+      "focos": 13.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "UICA (IRACI)": [
+    {
+      "codigo": "A234.3",
+      "data": "2026-08-03 00:00:00",
+      "focos": 3.0,
+      "classificacao": "Crítico"
+    }
+  ],
+  "UMBAÚBA": [
+    {
+      "codigo": "A234.3",
+      "data": "2026-08-03 00:00:00",
+      "focos": 3.0,
+      "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.4",
+      "data": "2026-08-05 00:00:00",
+      "focos": 2.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "MALHADA GRANDE (FRRC-PAPAGAIO)": [
+    {
+      "codigo": "A234.4",
+      "data": "2026-08-05 00:00:00",
+      "focos": 2.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "RIO BRANCO": [
+    {
+      "codigo": "A234.5",
+      "data": "2026-08-06 00:00:00",
+      "focos": 2.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.6",
+      "data": "2026-08-07 00:00:00",
+      "focos": 10.0,
+      "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.7",
+      "data": "2026-08-08 00:00:00",
+      "focos": 6.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.15",
+      "data": "2026-08-17 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.18",
+      "data": "2026-08-20 00:00:00",
+      "focos": 2.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "RONCADEIRA": [
+    {
+      "codigo": "A234.7",
+      "data": "2026-08-08 00:00:00",
+      "focos": 6.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.8",
+      "data": "2026-08-09 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.10",
+      "data": "2026-08-11 00:00:00",
+      "focos": 2.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.11",
+      "data": "2026-08-12 00:00:00",
+      "focos": 3.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.12",
+      "data": "2026-08-13 00:00:00",
+      "focos": 1.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "PONTA D'ÁGUA": [
+    {
+      "codigo": "A234.9",
+      "data": "2026-08-10 00:00:00",
+      "focos": 1.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "UIQUINHA": [
+    {
+      "codigo": "A234.13",
+      "data": "2026-08-15 00:00:00",
+      "focos": 9.0,
+      "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.16",
+      "data": "2026-08-18 00:00:00",
+      "focos": 7.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "IÉU (FFC)": [
+    {
+      "codigo": "A234.13",
+      "data": "2026-08-15 00:00:00",
+      "focos": 9.0,
+      "classificacao": "Crítico"
+    }
+  ],
+  "RIACHO DA AREIA": [
+    {
+      "codigo": "A234.14",
+      "data": "2026-08-16 00:00:00",
+      "focos": 2.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "CAJUEIRO": [
+    {
+      "codigo": "A234.15",
+      "data": "2026-08-17 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "ARAÇÁS DOS PENHAS": [
+    {
+      "codigo": "A234.15",
+      "data": "2026-08-17 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.16",
+      "data": "2026-08-18 00:00:00",
+      "focos": 7.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.17",
+      "data": "2026-08-19 00:00:00",
+      "focos": 1.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "ONÇA": [
+    {
+      "codigo": "A234.15",
+      "data": "2026-08-17 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.16",
+      "data": "2026-08-18 00:00:00",
+      "focos": 7.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.21",
+      "data": "2026-08-23 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "VOLTA DATA JACARÉ": [
+    {
+      "codigo": "A234.18",
+      "data": "2026-08-20 00:00:00",
+      "focos": 2.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "TORTA": [
+    {
+      "codigo": "A234.20",
+      "data": "2026-08-22 00:00:00",
+      "focos": 27.0,
+      "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.22",
+      "data": "2026-08-24 00:00:00",
+      "focos": 13.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "TRAÍRA": [
+    {
+      "codigo": "A234.21",
+      "data": "2026-08-23 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    }
+  ],
+  "FAZENDA DA CALÇADA (B53)": [
+    {
+      "codigo": "A234.19",
+      "data": "21/08/2026",
+      "focos": 1.0,
+      "classificacao": "Atenção"
+    }
+  ]
+}

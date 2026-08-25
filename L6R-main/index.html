@@ -212,6 +212,7 @@
 </head>
 
 ﻿<body>
+    <div id="update-notification" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:10px 20px; border-radius:8px; z-index:9999; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.5);"><i class="fa-solid fa-arrows-rotate fa-spin"></i> Novos relatórios detectados. Atualizando...</div>
 
     <header>
 
@@ -404,7 +405,11 @@
 
                 <div class="section-title">Focos por Unidade / Município</div>
 
-                <div style="height: 150px;"><canvas id="chartMunicipios"></canvas></div>
+                <div style="height: 150px; margin-bottom: 12px;"><canvas id="chartMunicipios"></canvas></div>
+
+                <div class="section-title">Relatórios por Propriedade</div>
+
+                <div style="height: 150px;"><canvas id="chartRelatorios"></canvas></div>
 
             </div>
 
@@ -586,6 +591,12 @@
 
         let chartMunInstance = null;
 
+        let chartRelatoriosInstance = null;
+        
+        let reportsData = {};
+        
+        let reportsHash = '';
+
 
 
         
@@ -597,14 +608,53 @@
                     pane: isBuffer ? 'camadaBuffers' : 'camadaFazendas',
                     onEachFeature: (feature, layer) => {
                         const p = feature.properties;
+                        const nome = p.FAZENDA || p.Name || p.name || p.COD || 'Área sem nome';
+                        const area = p.AREA_ha ? `${parseFloat(p.AREA_ha).toLocaleString('pt-BR')} ha` : '';
+                        
                         if (isBuffer) {
                             layer.bindTooltip(`<b>BUFFER</b><br><small>Raio de amortecimento / entorno</small>`, { sticky: true });
                         } else {
-                            const nome = p.FAZENDA || p.Name || p.name || p.COD || 'Área sem nome';
-                            const area = p.AREA_ha ? `${parseFloat(p.AREA_ha).toLocaleString('pt-BR')} ha` : '';
                             layer.bindTooltip(`<b>${nome}</b><br><small>${p.Municipio || p.source_layer || '-'} ${area ? ' | ' + area : ''}</small>`, { sticky: true });
+                            
+                            layer.bindPopup(() => {
+                                let popupHtml = `<div class="popup-header"><span><i class="fa-solid fa-map"></i> ${nome}</span></div>`;
+                                const nomeUpper = nome.toUpperCase().trim();
+                                let hasReport = false;
+                                for (let k in reportsData) {
+                                    if (nomeUpper.includes(k) || k.includes(nomeUpper)) {
+                                        hasReport = true;
+                                        popupHtml += `<div style="margin-top:6px; font-size:11px; color:#10b981; font-weight:bold;"><i class="fa-solid fa-file-check"></i> Relatórios Registrados:</div>`;
+                                        reportsData[k].forEach(r => {
+                                            let dtFormatada = r.data.split(' ')[0]; // Remove time if exists
+                                            let classLower = r.classificacao.toLowerCase();
+                                            let corMax = '#10b981'; // default
+                                            if (classLower.includes('crítico') || classLower.includes('critico') || classLower.includes('iminente')) corMax = '#FF0000';
+                                            else if (classLower.includes('atenção') || classLower.includes('atencao')) corMax = '#FFC000';
+                                            else if (classLower.includes('favorável') || classLower.includes('favoravel')) corMax = '#38bdf8';
+                                            
+                                            popupHtml += `<div style="background:#0f172a; padding:6px; margin-top:4px; border-radius:4px; border:1px solid #334155;">`;
+                                            popupHtml += `<div><b>Código:</b> ${r.codigo} | <b>Data:</b> ${dtFormatada}</div>`;
+                                            popupHtml += `<div><b>Focos:</b> ${r.focos} | <b>Max:</b> <span style="color:${corMax}; font-weight:bold;">${r.classificacao}</span></div>`;
+                                            popupHtml += `</div>`;
+                                        });
+                                        break;
+                                    }
+                                }
+                                if (!hasReport) {
+                                    popupHtml += `<div style="margin-top:6px; font-size:11px; color:#94a3b8;"><i class="fa-solid fa-file-xmark"></i> Sem relatórios registrados.</div>`;
+                                }
+                                return popupHtml;
+                            });
                         }
-                        layer.on({ mouseover: e => e.target.setStyle({ weight: 4, color: '#f59e0b', fillOpacity: 0.4 }), mouseout: e => geoLayer.resetStyle(e.target), click: e => map.fitBounds(e.target.getBounds(), { padding: [40, 40] }) });
+                        
+                        layer.on({ 
+                            mouseover: e => e.target.setStyle({ weight: 4, color: '#f59e0b', fillOpacity: 0.4 }), 
+                            mouseout: e => geoLayer.resetStyle(e.target), 
+                            click: e => {
+                                map.fitBounds(e.target.getBounds(), { padding: [40, 40] });
+                                if (!isBuffer) layer.openPopup();
+                            }
+                        });
                     }
                 });
                 isBuffer ? layerGroupBuffers.addLayer(geoLayer) : layerGroupAOI.addLayer(geoLayer);
@@ -1146,7 +1196,70 @@
             document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
         }
 
+        async function carregarRelatorios() {
+            try {
+                const resp = await fetch(`public/reports_data.json?t=${new Date().getTime()}`);
+                if (resp.ok) {
+                    const text = await resp.text();
+                    const newHash = text.length.toString(); 
+                    
+                    if (reportsHash !== '' && reportsHash !== newHash) {
+                        document.getElementById('update-notification').style.display = 'flex';
+                        setTimeout(() => window.location.reload(), 3000);
+                        return;
+                    }
+                    reportsHash = newHash;
+                    reportsData = JSON.parse(text);
+                    atualizarGraficoRelatorios();
+                }
+            } catch(e) {
+                console.log("Relatórios não disponíveis");
+            }
+        }
+        
+        setInterval(carregarRelatorios, 60000);
+
+        function atualizarGraficoRelatorios() {
+            let props = Object.keys(reportsData);
+            let counts = props.map(p => reportsData[p].length);
+            
+            let combined = props.map((p, i) => ({ label: p, count: counts[i] }));
+            combined.sort((a, b) => b.count - a.count);
+            
+            props = combined.map(x => x.label);
+            counts = combined.map(x => x.count);
+            
+            const elemChartRel = document.getElementById('chartRelatorios');
+            if (elemChartRel) {
+                const ctxRel = elemChartRel.getContext('2d');
+                if (chartRelatoriosInstance) chartRelatoriosInstance.destroy();
+                chartRelatoriosInstance = new Chart(ctxRel, {
+                    type: 'bar',
+                    data: {
+                        labels: props.length > 0 ? props : ['Sem Relatórios'],
+                        datasets: [{
+                            label: 'Relatórios',
+                            data: counts.length > 0 ? counts : [0],
+                            backgroundColor: '#06b6d4',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', font: { size: 9 }, stepSize: 1 }, grid: { color: '#334155' } },
+                            y: { ticks: { color: '#94a3b8', font: { size: 9 } } }
+                        }
+                    }
+                });
+            }
+        }
+
         window.onload = () => {
+            carregarRelatorios();
             carregarAOIs();
             atualizarFocosBackendProxy();
         };
