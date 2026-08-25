@@ -78,29 +78,5 @@
     "features_count": 444,
     "file_path": "/public/layers/INMET.geojson",
     "geometry_type": "Point"
-  },
-  {
-    "id": "Municipios__CFB",
-    "original_file": "Municipios -CFB.gpkg",
-    "name": "Municipios -CFB",
-    "features_count": 6,
-    "file_path": "/public/layers/Municipios__CFB.geojson",
-    "geometry_type": "MultiPolygon"
-  },
-  {
-    "id": "Municipios__FSV",
-    "original_file": "Municipios -FSV.gpkg",
-    "name": "Municipios -FSV",
-    "features_count": 1,
-    "file_path": "/public/layers/Municipios__FSV.geojson",
-    "geometry_type": "MultiPolygon"
-  },
-  {
-    "id": "Municipios__SBS",
-    "original_file": "Municipios -SBS.gpkg",
-    "name": "Municipios -SBS",
-    "features_count": 3,
-    "file_path": "/public/layers/Municipios__SBS.geojson",
-    "geometry_type": "MultiPolygon"
   }
 ]

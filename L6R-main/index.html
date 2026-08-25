@@ -171,7 +171,7 @@
 
         #map { width: 100%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; right: 0; background: #000; }
 
-        .map-floating-panel { position: absolute; top: 15px; right: 15px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
+        .map-floating-panel { position: absolute; top: 15px; left: 55px; right: auto; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
 
         .map-floating-btn { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
 
@@ -322,6 +322,8 @@
                     <div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 11px;">Carregando focos...</div>
 
                 </div>
+                
+                <div id="nasa-error-msg" style="color: #ef4444; font-size: 11px; text-align: center; margin-top: 10px; display: none; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.4);"></div>
 
             </div>
 
@@ -598,7 +600,7 @@
                     pane: isBuffer ? 'camadaBuffers' : 'camadaFazendas',
                     onEachFeature: (feature, layer) => {
                         const p = feature.properties;
-                        const nome = p.FAZENDA || p.name || p.COD || 'Área sem nome';
+                        const nome = p.FAZENDA || p.Name || p.name || p.COD || 'Área sem nome';
                         const area = p.AREA_ha ? `${parseFloat(p.AREA_ha).toLocaleString('pt-BR')} ha` : '';
                         layer.bindTooltip(`<b>${nome}</b><br><small>${p.Municipio || p.source_layer || '-'} ${area ? ' | ' + area : ''}</small>`, { sticky: true });
                         layer.on({ mouseover: e => e.target.setStyle({ weight: 4, color: '#f59e0b', fillOpacity: 0.4 }), mouseout: e => geoLayer.resetStyle(e.target), click: e => map.fitBounds(e.target.getBounds(), { padding: [40, 40] }) });
@@ -646,7 +648,7 @@
 
                 const p = feat.properties;
 
-                const nome = p.FAZENDA || p.name || `Área #${idx + 1}`;
+                const nome = p.FAZENDA || p.Name || p.name || `Área #${idx + 1}`;
 
                 const mun = p.Municipio || p.source_layer || '';
 
@@ -742,7 +744,7 @@
             }
         }
 
-        // 1. CONSULTA NASA FIRMS NOAA-21 VIA PROXY BACKEND
+        // 1. CONSULTA NASA FIRMS DIRETA API (PWA)
         async function atualizarFocosBackendProxy() {
             const btn = document.getElementById('btn-atualizar-focos');
             if (btn) {
@@ -754,29 +756,64 @@
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-                const resp = await fetch('/api/focos/24h', { signal: controller.signal });
+                const FIRMS_KEY = "9ae335e3f3fa02559ba3872c841c2ec6";
+                const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${FIRMS_KEY}/VIIRS_NOAA21_NRT/-85,-60,-30,15/1`;
+
+                const resp = await fetch(url, { signal: controller.signal });
                 clearTimeout(timeoutId);
 
                 if (!resp.ok) {
-                    throw new Error(`Servidor retornou HTTP ${resp.status}: ${resp.statusText}`);
+                    throw new Error(`Servidor NASA retornou HTTP ${resp.status}: ${resp.statusText}`);
                 }
 
-                const data = await resp.json();
+                const csvText = await resp.text();
+                const lines = csvText.trim().split('\n');
+                const focos = [];
+                
+                if (lines.length > 1) {
+                    const headers = lines[0].split(',');
+                    for (let i = 1; i < lines.length; i++) {
+                        const row = lines[i].split(',');
+                        if (row.length === headers.length) {
+                            let f = {};
+                            for (let j = 0; j < headers.length; j++) {
+                                f[headers[j]] = row[j];
+                            }
+                            focos.push({
+                                latitude: parseFloat(f.latitude),
+                                longitude: parseFloat(f.longitude),
+                                frp: parseFloat(f.frp),
+                                confidence: f.confidence,
+                                daynight: f.daynight,
+                                acq_date: f.acq_date,
+                                acq_time: f.acq_time,
+                                satellite: "VIIRS NOAA-21",
+                                dentro_aoi: false
+                            });
+                        }
+                    }
+                }
 
-                if (data.focos && data.focos.length > 0) {
-                    processarFocos(data.focos);
-                    console.log(`✅ [NASA FIRMS] ${data.focos.length} focos reais NOAA-21 recebidos (${data.source || 'NASA'}).`);
+                if (focos.length > 0) {
+                    processarFocos(focos);
+                    console.log(`✅ [NASA FIRMS] ${focos.length} focos reais NOAA-21 recebidos.`);
+                    const errorMsgDiv = document.getElementById('nasa-error-msg');
+                    if (errorMsgDiv) errorMsgDiv.style.display = 'none';
                 } else {
                     console.warn('⚠️ [NASA VAZIO] Nenhum foco registrado nas últimas 24h na região.');
                     processarFocos([]);
                 }
             } catch (err) {
                 console.error('❌ [NASA ERRO]', err);
-                alert('Aviso na consulta à NASA FIRMS: ' + err.message);
+                const errorMsgDiv = document.getElementById('nasa-error-msg');
+                if (errorMsgDiv) {
+                    errorMsgDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Aviso na consulta à NASA FIRMS: O serviço está indisponível no momento (' + err.message + ').';
+                    errorMsgDiv.style.display = 'block';
+                }
                 processarFocos([]);
             } finally {
                 if (btn) {
-                    btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Atualizar Focos (Proxy)';
+                    btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Atualizar Focos (Direto)';
                     btn.disabled = false;
                 }
             }
@@ -821,7 +858,7 @@
                     for (let aoi of aoiFeatures) {
                         if (turf.booleanPointInPolygon(pt, aoi)) {
                             estaDentro = true;
-                            aoiNome = aoi.properties.FAZENDA || aoi.properties.name || aoi.properties.COD || 'Área CSN';
+                            aoiNome = aoi.properties.FAZENDA || aoi.properties.Name || aoi.properties.name || aoi.properties.COD || 'Área CSN';
                             aoiMun = aoi.properties.Municipio || aoi.properties.UF || '-';
                             break;
                         }
