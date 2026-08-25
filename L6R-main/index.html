@@ -1112,6 +1112,23 @@
                         scales: {
                             x: { ticks: { color: '#94a3b8', font: { size: 9 } } },
                             y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#334155' } }
+                        },
+                        onClick: (event, elements) => {
+                            if (elements.length > 0) {
+                                const idx = elements[0].index;
+                                const label = chartFRPInstance.data.labels[idx];
+                                let targetFocos = [];
+                                if (label === '0-5') targetFocos = intersectedFocos.filter(f => f.frp < 5);
+                                else if (label === '5-10') targetFocos = intersectedFocos.filter(f => f.frp >= 5 && f.frp < 10);
+                                else if (label === '10-25') targetFocos = intersectedFocos.filter(f => f.frp >= 10 && f.frp < 25);
+                                else if (label === '25-50') targetFocos = intersectedFocos.filter(f => f.frp >= 25 && f.frp < 50);
+                                else if (label === '> 50') targetFocos = intersectedFocos.filter(f => f.frp >= 50);
+                                
+                                if (targetFocos.length > 0) {
+                                    const bounds = L.latLngBounds(targetFocos.map(f => [f.latitude, f.longitude]));
+                                    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+                                }
+                            }
                         }
                     }
                 });
@@ -1140,6 +1157,33 @@
                             legend: {
                                 position: 'bottom',
                                 labels: { color: '#94a3b8', font: { size: 9 } }
+                            }
+                        },
+                        onClick: (event, elements) => {
+                            if (elements.length > 0) {
+                                const idx = elements[0].index;
+                                const aoiNome = chartMunInstance.data.labels[idx];
+                                if (aoiNome === 'Sem Focos na AOI') return;
+                                
+                                if (window.AOI_GEOJSON) {
+                                    if (aoiNome === 'BUFFER') {
+                                        let targetFocos = intersectedFocos.filter(f => f.aoi_nome === 'BUFFER');
+                                        if (targetFocos.length > 0) {
+                                            const bounds = L.latLngBounds(targetFocos.map(f => [f.latitude, f.longitude]));
+                                            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+                                        }
+                                    } else {
+                                        const features = window.AOI_GEOJSON.features.filter(feat => {
+                                            const p = feat.properties;
+                                            return (p.FAZENDA || p.name || p.COD || '') === aoiNome;
+                                        });
+                                        if (features.length > 0) {
+                                            map.fitBounds(L.geoJSON(features).getBounds(), { padding: [40, 40] });
+                                        } else if (aoiMap[aoiNome] && aoiMap[aoiNome].lat) {
+                                            map.flyTo([aoiMap[aoiNome].lat, aoiMap[aoiNome].lon], 14);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1252,6 +1296,25 @@
                         scales: {
                             x: { ticks: { color: '#94a3b8', font: { size: 9 }, stepSize: 1 }, grid: { color: '#334155' } },
                             y: { ticks: { color: '#94a3b8', font: { size: 9 } } }
+                        },
+                        onClick: (event, elements) => {
+                            if (elements.length > 0) {
+                                const idx = elements[0].index;
+                                const propName = chartRelatoriosInstance.data.labels[idx];
+                                if (propName === 'Sem Relatórios') return;
+                                
+                                if (window.AOI_GEOJSON) {
+                                    const propNameUpper = propName.toUpperCase().trim();
+                                    const features = window.AOI_GEOJSON.features.filter(feat => {
+                                        const p = feat.properties;
+                                        const nome = (p.FAZENDA || p.Name || p.name || p.COD || '').toUpperCase().trim();
+                                        return nome.includes(propNameUpper) || propNameUpper.includes(nome);
+                                    });
+                                    if (features.length > 0) {
+                                        map.fitBounds(L.geoJSON(features).getBounds(), { padding: [40, 40] });
+                                    }
+                                }
+                            }
                         }
                     }
                 });
