@@ -1,0 +1,21 @@
+{
+  "name": "Geoportal CSN",
+  "short_name": "Geoportal",
+  "description": "Monitoramento de Queimadas CSN",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#070d18",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
