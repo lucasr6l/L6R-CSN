@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geoportal-csn-cache-v1';
+const CACHE_NAME = 'geoportal-csn-cache-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

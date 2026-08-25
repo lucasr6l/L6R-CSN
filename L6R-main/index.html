@@ -59,11 +59,11 @@
 
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; overflow: hidden; }
 
-        header { height: 64px; min-height: 64px; background-color: #030712; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 18px; z-index: 1001; }
+        header { height: 70px; min-height: 70px; background-color: #030712; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 18px; z-index: 1001; }
 
         .brand { display: flex; align-items: center; gap: 12px; }
 
-        .brand-logo { background: linear-gradient(135deg, #ef4444, #f59e0b); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+        .brand-logo { display: flex; align-items: center; gap: 10px; }
 
         .brand-title { font-size: 15px; font-weight: 700; }
 
@@ -93,7 +93,7 @@
 
         .btn-primary { background: linear-gradient(135deg, #0284c7, #0369a1); border: none; color: white; }
 
-        .app-body { display: flex; flex: 1; width: 100%; height: calc(100vh - 64px); position: relative; overflow: hidden; }
+        .app-body { display: flex; flex: 1; width: 100%; height: calc(100vh - 70px); position: relative; overflow: hidden; }
 
         #sidebar { width: var(--sidebar-width); min-width: var(--sidebar-width); background: var(--bg-sidebar); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 1000; height: 100%; }
 
@@ -217,11 +217,14 @@
 
         <div class="brand">
 
-            <div class="brand-logo"><i class="fa-solid fa-fire-flame-curved"></i></div>
+            <div class="brand-logo">
+                <img src="public/l6r-logo.png" alt="L6R" style="height: 54px; width: auto; background: white; padding: 3px; border-radius: 5px;">
+                <img src="public/csn-logo.jpg" alt="CSN" style="height: 54px; width: auto; background: white; padding: 3px; border-radius: 5px;">
+            </div>
 
             <div>
 
-                <div class="brand-title">GEOPORTAL CSN • QUEIMADAS</div>
+                <div class="brand-title">DASHBOARD CSN • FOCOS DE CALOR</div>
 
                 <div class="brand-subtitle"><i class="fa-solid fa-satellite"></i> VIIRS NOAA-21 (375m) • 24h</div>
 
@@ -307,13 +310,7 @@
                     <div class="kpi-card purple"><div class="kpi-title">Fazendas Atingidas</div><div class="kpi-value" id="kpi-aoi-atingidas">0</div><div class="kpi-sub">De 100 cadastradas</div></div>
                     <div class="kpi-card orange"><div class="kpi-title">Status de Risco</div><div class="kpi-value" id="kpi-status-risco" style="font-size:15px;">NORMAL</div><div class="kpi-sub">Critério Operacional</div></div>
                 </div>
-                <div style="font-size:10px; text-transform:uppercase; font-weight:700; color:#94a3b8; margin-bottom:6px; display:flex; align-items:center; gap:6px; margin-top:10px;">
-                    <i class="fa-solid fa-earth-americas"></i> Contexto Regional (Fora da Área)
-                </div>
-                <div class="kpi-grid">
-                    <div class="kpi-card" style="border-color:#475569;"><div class="kpi-title">Focos Fora da AOI</div><div class="kpi-value" id="kpi-focos-fora">0</div><div class="kpi-sub">Focos no Raio Regional</div></div>
-                    <div class="kpi-card" style="border-color:#475569;"><div class="kpi-title">Maior FRP Regional</div><div class="kpi-value" id="kpi-max-frp-fora">0.0 <span style="font-size:10px;">MW</span></div><div class="kpi-sub">FRP Máx Externo</div></div>
-                </div>
+
 
                 <div class="section-title"><span>Áreas Afetadas com Alerta</span><i class="fa-solid fa-list-check"></i></div>
 
@@ -600,9 +597,13 @@
                     pane: isBuffer ? 'camadaBuffers' : 'camadaFazendas',
                     onEachFeature: (feature, layer) => {
                         const p = feature.properties;
-                        const nome = p.FAZENDA || p.Name || p.name || p.COD || 'Área sem nome';
-                        const area = p.AREA_ha ? `${parseFloat(p.AREA_ha).toLocaleString('pt-BR')} ha` : '';
-                        layer.bindTooltip(`<b>${nome}</b><br><small>${p.Municipio || p.source_layer || '-'} ${area ? ' | ' + area : ''}</small>`, { sticky: true });
+                        if (isBuffer) {
+                            layer.bindTooltip(`<b>BUFFER</b><br><small>Raio de amortecimento / entorno</small>`, { sticky: true });
+                        } else {
+                            const nome = p.FAZENDA || p.Name || p.name || p.COD || 'Área sem nome';
+                            const area = p.AREA_ha ? `${parseFloat(p.AREA_ha).toLocaleString('pt-BR')} ha` : '';
+                            layer.bindTooltip(`<b>${nome}</b><br><small>${p.Municipio || p.source_layer || '-'} ${area ? ' | ' + area : ''}</small>`, { sticky: true });
+                        }
                         layer.on({ mouseover: e => e.target.setStyle({ weight: 4, color: '#f59e0b', fillOpacity: 0.4 }), mouseout: e => geoLayer.resetStyle(e.target), click: e => map.fitBounds(e.target.getBounds(), { padding: [40, 40] }) });
                     }
                 });
@@ -616,7 +617,9 @@
 
                 addFeaturesToMap(window.AOI_GEOJSON.features);
 
-                renderizarListaAOI(window.AOI_GEOJSON.features);
+                const farmsOnly = window.AOI_GEOJSON.features.filter(f => !((f.properties && f.properties.source_layer) ? f.properties.source_layer.toLowerCase() : '').includes('buffer'));
+
+                renderizarListaAOI(farmsOnly);
 
                 centralizarTodasAOIs();
 
@@ -846,35 +849,65 @@
             let aoiMap = {};
             let heatPoints = [];
             const aoiFeatures = (window.AOI_GEOJSON && window.AOI_GEOJSON.features) ? window.AOI_GEOJSON.features : [];
+            const farmFeatures = aoiFeatures.filter(feat => {
+                const src = ((feat.properties && feat.properties.source_layer) ? feat.properties.source_layer.toLowerCase() : '');
+                return !src.includes('buffer');
+            });
+            const bufferFeatures = aoiFeatures.filter(feat => {
+                const src = ((feat.properties && feat.properties.source_layer) ? feat.properties.source_layer.toLowerCase() : '');
+                return src.includes('buffer');
+            });
 
             filtrados.forEach(f => {
-                let estaDentro = Boolean(f.dentro_aoi);
-                let aoiNome = f.aoi_nome || null;
-                let aoiMun = f.aoi_municipio || null;
+                let tipoLocal = 'fora'; // 'propriedade', 'buffer', 'fora'
+                let aoiNome = null;
+                let aoiMun = null;
+                let statusLabel = 'Fora da AOI';
+                let statusColor = '#10b981';
 
-                // Validação espacial local caso necessário
-                if (!estaDentro && aoiFeatures.length > 0 && typeof turf !== 'undefined') {
+                if (typeof turf !== 'undefined') {
                     const pt = turf.point([f.longitude, f.latitude]);
-                    for (let aoi of aoiFeatures) {
-                        if (turf.booleanPointInPolygon(pt, aoi)) {
-                            estaDentro = true;
-                            aoiNome = aoi.properties.FAZENDA || aoi.properties.Name || aoi.properties.name || aoi.properties.COD || 'Área CSN';
-                            aoiMun = aoi.properties.Municipio || aoi.properties.UF || '-';
+                    
+                    // 1. Checa primeiro se está REALMENTE dentro da propriedade (fazenda)
+                    for (let farm of farmFeatures) {
+                        if (turf.booleanPointInPolygon(pt, farm)) {
+                            tipoLocal = 'propriedade';
+                            aoiNome = farm.properties.FAZENDA || farm.properties.Name || farm.properties.name || farm.properties.COD || 'Área CSN';
+                            aoiMun = farm.properties.Municipio || farm.properties.UF || '-';
+                            statusLabel = `${aoiNome} (Na Propriedade)`;
+                            statusColor = '#ef4444';
                             break;
+                        }
+                    }
+
+                    // 2. Se NÃO está na fazenda, checa se está no Buffer Geral delimitado (5km / entorno)
+                    if (tipoLocal === 'fora') {
+                        for (let buf of bufferFeatures) {
+                            if (turf.booleanPointInPolygon(pt, buf)) {
+                                tipoLocal = 'buffer';
+                                aoiNome = 'BUFFER';
+                                aoiMun = buf.properties.Municipio || buf.properties.UF || '-';
+                                statusLabel = 'BUFFER';
+                                statusColor = '#f59e0b';
+                                break;
+                            }
                         }
                     }
                 }
 
+                const estaDentro = (tipoLocal === 'propriedade' || tipoLocal === 'buffer');
+
                 if (estaDentro) {
                     totalAOI++;
                     if (f.frp > maxFRP_AOI) maxFRP_AOI = f.frp;
-                    if (!aoiNome) aoiNome = 'Área CSN';
+                    if (!aoiNome) aoiNome = 'Área Monitorada';
                     if (!aoiMap[aoiNome]) {
-                        aoiMap[aoiNome] = { count: 0, maxFRP: 0, mun: aoiMun || '-', lat: f.latitude, lon: f.longitude };
+                        aoiMap[aoiNome] = { count: 0, maxFRP: 0, mun: aoiMun || '-', lat: f.latitude, lon: f.longitude, tipo: tipoLocal };
                     }
                     aoiMap[aoiNome].count++;
                     if (f.frp > aoiMap[aoiNome].maxFRP) aoiMap[aoiNome].maxFRP = f.frp;
                     f.dentro_aoi = true;
+                    f.tipo_local = tipoLocal;
                     f.aoi_nome = aoiNome;
                     f.aoi_municipio = aoiMun;
                     intersectedFocos.push(f);
@@ -889,17 +922,24 @@
                 const marker = L.circleMarker([f.latitude, f.longitude], {
                     radius: f.frp > 30 ? 8 : (f.frp > 10 ? 6 : 4.5),
                     fillColor: cor,
-                    color: estaDentro ? '#ffffff' : '#1e293b',
-                    weight: estaDentro ? 2.5 : 1,
+                    color: tipoLocal === 'propriedade' ? '#ffffff' : (tipoLocal === 'buffer' ? '#f59e0b' : '#1e293b'),
+                    weight: tipoLocal === 'propriedade' ? 2.5 : (tipoLocal === 'buffer' ? 2 : 1),
                     opacity: 1,
                     fillOpacity: 0.85,
                     pane: 'camadaFocos'
                 });
 
+                const badgeLocal = tipoLocal === 'propriedade' 
+                    ? '<span style="color:#ef4444;font-weight:700;"><i class="fa-solid fa-fire"></i> DENTRO DA PROPRIEDADE</span>' 
+                    : (tipoLocal === 'buffer' 
+                        ? '<span style="color:#f59e0b;font-weight:700;"><i class="fa-solid fa-shield"></i> NO BUFFER GERAL (Entorno)</span>' 
+                        : '<span style="color:#10b981;font-weight:700;">Fora da AOI</span>');
+
                 marker.bindPopup(`
                     <div class="popup-header"><span>🔥 VIIRS NOAA-21 (375m)</span><span style="color:${cor};font-weight:700;">FRP ${f.frp.toFixed(1)} MW</span></div>
-                    <div class="popup-row"><strong>Status:</strong> <span style="color:${estaDentro ? '#ef4444':'#10b981'};font-weight:700;">${estaDentro ? aoiNome : 'Fora da AOI'}</span></div>
-                    ${estaDentro ? `<div class="popup-row"><strong>Município:</strong> <span>${aoiMun || '-'}</span></div>` : ''}
+                    <div class="popup-row"><strong>Localização:</strong> <span>${badgeLocal}</span></div>
+                    <div class="popup-row"><strong>Status / Área:</strong> <span style="color:${statusColor};font-weight:700;">${statusLabel}</span></div>
+                    ${aoiMun ? `<div class="popup-row"><strong>Município:</strong> <span>${aoiMun}</span></div>` : ''}
                     <div class="popup-row"><strong>Data/Hora:</strong> <span>${f.acq_date} ${f.acq_time} UTC</span></div>
                     <div class="popup-row"><strong>Confiança:</strong> <span>${f.confidence}</span></div>
                     <div class="popup-row"><strong>Coordenadas:</strong> <span>${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</span></div>
@@ -914,7 +954,7 @@
             }
 
             atualizarDashboardUI(totalAOI, maxFRP_AOI, totalFora, maxFRP_Fora, aoiMap);
-            atualizarGraficos(filtrados, aoiMap);
+            atualizarGraficos(intersectedFocos, aoiMap);
         }
 
         function obterCorFRP(frp) {
