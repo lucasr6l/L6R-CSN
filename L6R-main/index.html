@@ -311,7 +311,7 @@
             <div class="sidebar-tabs">
                 <div class="sidebar-tab active" onclick="switchTab('tab-dash', this)" title="Painel Operacional"><i class="fa-solid fa-layer-group"></i></div>
                 <div class="sidebar-tab" onclick="switchTab('tab-filtros', this)" title="Filtros"><i class="fa-solid fa-filter"></i></div>
-                <div class="sidebar-tab" onclick="switchTab('tab-aoi', this)" title="Gestão de AOIs"><i class="fa-solid fa-draw-polygon"></i></div>
+                <div class="sidebar-tab" onclick="switchTab('tab-aoi', this)" title="Propriedades"><i class="fa-solid fa-draw-polygon"></i></div>
                 <div class="sidebar-tab" onclick="switchTab('tab-clima', this)" title="Dados Climáticos"><i class="fa-solid fa-cloud-sun-rain"></i></div>
                 <div class="sidebar-tab" onclick="switchTab('tab-graficos', this)" title="Estatísticas"><i class="fa-solid fa-chart-line"></i></div>
             </div>
@@ -337,14 +337,16 @@
 
                 <div class="kpi-grid">
                     <div class="kpi-card red">
-                        <div class="kpi-title">Focos na AOI</div>
-                        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 5px;">
+                        <div class="kpi-title">Focos nas Propriedades</div>
+                        <div style="display: flex; gap: 10px; align-items: flex-end;">
                             <div class="kpi-value" id="kpi-focos-aoi">0</div>
+                            <div class="kpi-sub" style="margin-bottom: 5px;">nas últimas 24h</div>
                         </div>
                     </div>
-                    <div class="kpi-card orange">
-                        <div class="kpi-title">Maior FRP na AOI</div>
+                    <div class="kpi-card gold">
+                        <div class="kpi-title">Maior FRP nas Propriedades</div>
                         <div class="kpi-value" id="kpi-max-frp-aoi" style="margin-bottom: 5px;">0.0 <span style="font-size:10px;">MW</span></div>
+                        <div class="kpi-sub">nas últimas 24h</div>
                     </div>
                     <div class="kpi-card purple">
                         <div class="kpi-title">Fazendas Atingidas</div>
@@ -356,18 +358,26 @@
                     </div>
                     <div class="kpi-card red">
                         <div class="kpi-title" style="text-align:center;">Status de Risco</div>
-                        <div style="display:flex; justify-content:center; margin-top:10px;">
-                            <div style="position:relative; width:80px; height:40px; overflow:hidden;">
-                                <div style="width:80px; height:80px; border-radius:50%; border:10px solid #333; border-top-color:var(--accent-green); border-right-color:var(--accent-orange); border-bottom-color:var(--accent-red); transform:rotate(-45deg); box-sizing:border-box;"></div>
-                                <div id="gauge-needle" style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:2px; height:35px; background:white; transform-origin:bottom center; rotate:45deg; transition: rotate 0.5s ease;"></div>
-                            </div>
+                        <div style="position:relative; width:120px; height:65px; margin: 10px auto 0 auto;">
+                            <!-- Chart.js half-doughnut -->
+                            <canvas id="chartRiscoGauge"></canvas>
+                            <!-- Needle Base Dot -->
+                            <div style="position:absolute; bottom:4px; left:50%; transform:translateX(-50%); width:12px; height:12px; background:white; border-radius:50%; z-index:11; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>
+                            <!-- Needle -->
+                            <div id="gauge-needle" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:3px; height:45px; background:white; transform-origin:bottom center; rotate:0deg; transition: rotate 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); border-radius:3px; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>
                         </div>
                         <div class="kpi-value" id="kpi-status-risco" style="font-size:12px; text-align:center; color:var(--accent-red); margin-top:5px;">CRÍTICO</div>
                     </div>
                 </div>
 
 
-                <div class="section-title"><span>ÁREAS CRÍTICAS ATIVAS</span><i class="fa-solid fa-list"></i></div>
+                <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>REGISTRO DE PONTOS DE CALOR</span>
+                    <select id="select-tabela-tempo" class="form-control" style="width: auto; padding: 2px 6px; font-size: 10px; height: auto;" onchange="renderListaAfetadas()">
+                        <option value="24h" selected>24h</option>
+                        <option value="7d">7 Dias</option>
+                    </select>
+                </div>
 
                 <div style="display: flex; justify-content: space-between; font-size: 9px; text-transform: uppercase; color: var(--text-muted); padding: 0 10px 5px 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 5px;">
                     <span style="flex:2;">Área</span>
@@ -405,18 +415,12 @@
 
                 <div class="form-group">
 
-                    <label><i class="fa-solid fa-shield-halved"></i> Confiança:</label>
-
-                    <select class="form-control" id="select-confianca" onchange="atualizarFiltros()">
-
-                        <option value="todos">Todos (Baixa, Nominal, Alta)</option>
-
-                        <option value="nominal_alta" selected>Apenas Nominal & Alta</option>
-
-                        <option value="alta">Apenas Alta Confiança (h)</option>
-
+                    <label><i class="fa-solid fa-map-location-dot"></i> Localização do Foco:</label>
+                    <select class="form-control" id="select-localizacao" onchange="atualizarFiltros()">
+                        <option value="todos" selected>Geral (Todos os focos)</option>
+                        <option value="propriedade">Apenas Propriedades</option>
+                        <option value="buffer">Apenas Buffer</option>
                     </select>
-
                 </div>
 
                 <div class="form-group">
@@ -453,9 +457,9 @@
 
             <div id="tab-aoi" class="tab-content">
 
-                <div class="form-group"><input type="text" class="form-control" placeholder="🔍 Buscar fazenda ou município..." onkeyup="filtrarListaAOI(this.value)"></div>
+                <div class="form-group"><input type="text" class="form-control" placeholder="🔍 Buscar propriedade..." onkeyup="filtrarListaAOI(this.value)"></div>
 
-                <div class="section-title"><span>Fazendas Cadastradas (<span id="count-aoi-total">91</span>)</span></div>
+                <div class="section-title"><span>Propriedades (<span id="count-aoi-total">91</span>)</span></div>
 
                 <div class="aoi-list" id="lista-completa-aoi"></div>
 
@@ -542,20 +546,34 @@
 
             <div id="tab-graficos" class="tab-content">
 
-                <div class="section-title">Distribuição por Faixa de FRP</div>
-
+                <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Distribuição por Faixa de FRP</span>
+                    <span style="font-size:9px; color:var(--text-muted); font-weight:normal; text-transform:none;">(Diário - Filtro do Mapa)</span>
+                </div>
                 <div style="height: 150px; margin-bottom: 12px;"><canvas id="chartFRP"></canvas></div>
 
-                <div class="section-title">Focos por Unidade / Município</div>
-
+                <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap: 8px;">
+                        <span>Focos por </span>
+                        <div style="display:flex; background:rgba(255,255,255,0.05); border-radius:12px; padding:2px; border:1px solid rgba(255,255,255,0.1);">
+                            <button id="btn-grafico-prop" onclick="window.chartLocal='propriedade'; document.getElementById('btn-grafico-prop').style.background='var(--accent-red)'; document.getElementById('btn-grafico-prop').style.color='white'; document.getElementById('btn-grafico-buf').style.background='transparent'; document.getElementById('btn-grafico-buf').style.color='var(--text-muted)'; if(typeof allFocos !== 'undefined' && allFocos.length > 0) processarFocos(allFocos);" style="background:var(--accent-red); color:white; border:none; border-radius:10px; padding:2px 10px; font-size:10px; cursor:pointer; font-weight:600; outline:none; transition:0.2s;">Propriedade</button>
+                            <button id="btn-grafico-buf" onclick="window.chartLocal='buffer'; document.getElementById('btn-grafico-buf').style.background='var(--accent-orange)'; document.getElementById('btn-grafico-buf').style.color='white'; document.getElementById('btn-grafico-prop').style.background='transparent'; document.getElementById('btn-grafico-prop').style.color='var(--text-muted)'; if(typeof allFocos !== 'undefined' && allFocos.length > 0) processarFocos(allFocos);" style="background:transparent; color:var(--text-muted); border:none; border-radius:10px; padding:2px 10px; font-size:10px; cursor:pointer; font-weight:600; outline:none; transition:0.2s;">Buffer</button>
+                        </div>
+                    </div>
+                    <span style="font-size:9px; color:var(--text-muted); font-weight:normal; text-transform:none;">(Diário)</span>
+                </div>
                 <div style="height: 150px; margin-bottom: 12px;"><canvas id="chartMunicipios"></canvas></div>
 
-                <div class="section-title">Relatórios por Propriedade</div>
-
+                <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Relatórios por Propriedade</span>
+                    <span style="font-size:9px; color:var(--text-muted); font-weight:normal; text-transform:none;">(Histórico - Todo Período)</span>
+                </div>
                 <div style="height: 150px; margin-bottom: 12px;"><canvas id="chartRelatorios"></canvas></div>
 
-                <div class="section-title">Evolução Temporal (Últimos 7 Dias)</div>
-
+                <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Evolução Temporal</span>
+                    <span style="font-size:9px; color:var(--text-muted); font-weight:normal; text-transform:none;">(Semanal - Fixo 7 Dias)</span>
+                </div>
                 <div style="height: 150px; margin-bottom: 20px;"><canvas id="chartEvolucao"></canvas></div>
 
             </div>
@@ -570,29 +588,7 @@
                 <button class="map-floating-btn" onclick="centralizarTodasAOIs()"><i class="fa-solid fa-expand"></i> CENTRALIZAR MAPA</button>
             </div>
 
-            <!-- Right Overlays -->
-            <div style="position: absolute; right: 20px; top: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 1000; width: 280px; pointer-events: none;">
-                
-                <div style="background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; pointer-events: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-                    <div style="font-size: 11px; font-weight: 600; color: white; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 10px; text-transform: uppercase;">
-                        Direção do Vento
-                        <i class="fa-solid fa-times" style="color:var(--text-muted); cursor:pointer;"></i>
-                    </div>
-                    <div id="wind-panel-data" style="display: flex; gap: 15px; align-items: center; margin-bottom: 5px;">
-                        <div style="width: 70px; height: 70px; border: 2px dashed rgba(255,255,255,0.2); border-radius: 50%; position: relative; display: flex; justify-content: center; align-items: center;">
-                            <div style="position: absolute; top: 2px; font-size: 9px; color: var(--text-muted);">N</div>
-                            <div style="position: absolute; bottom: 2px; font-size: 9px; color: var(--text-muted);">S</div>
-                            <div style="position: absolute; right: 4px; font-size: 9px; color: var(--text-muted);">E</div>
-                            <div style="position: absolute; left: 4px; font-size: 9px; color: var(--text-muted);">W</div>
-                            <i id="wind-arrow-icon" class="fa-solid fa-location-arrow" style="color: var(--text-muted); font-size: 20px; transform: rotate(0deg); transition: transform 1s ease;"></i>
-                        </div>
-                        <div style="flex: 1; font-size: 10px; color: var(--text-main); display: flex; flex-direction: column; gap: 4px;">
-                            <div id="wind-data-text" style="display:flex; gap:6px; color:var(--text-muted);">Buscando dados...</div>
-                        </div>
-                    </div>
-                </div>
 
-            </div>
 
             <div class="legend-card" style="display: flex; gap: 15px; width: 420px; max-width: calc(100% - 100px); bottom: 15px; padding: 8px 12px; font-size: 10px;">
                 
@@ -902,15 +898,11 @@
 
 
         function filtrarListaAOI(q) {
-
             const query = q.toLowerCase();
-
             document.querySelectorAll('#lista-completa-aoi .aoi-item').forEach(it => {
-
-                it.style.display = it.innerText.toLowerCase().includes(query) ? 'flex' : 'none';
-
+                const name = it.querySelector('.aoi-name').innerText.toLowerCase();
+                it.style.display = name.includes(query) ? 'flex' : 'none';
             });
-
         }
 
 
@@ -1031,9 +1023,6 @@
 
                 if (focos.length > 0) {
                     processarFocos(focos);
-                    console.log(`✅ [NASA FIRMS] ${focos.length} focos reais NOAA-21 recebidos.`);
-                    const errorMsgDiv = document.getElementById('nasa-error-msg');
-                    if (errorMsgDiv) errorMsgDiv.style.display = 'none';
                 } else {
                     console.warn('⚠️ [NASA VAZIO] Nenhum foco registrado nas últimas 24h na região.');
                     processarFocos([]);
@@ -1062,13 +1051,11 @@
             }
 
             const minFRP = parseFloat(document.getElementById('slider-frp').value) || 0;
-            const confianca = document.getElementById('select-confianca').value;
             const daynight = document.getElementById('select-daynight').value;
+            const localizacaoFiltro = document.getElementById('select-localizacao') ? document.getElementById('select-localizacao').value : 'todos';
 
             let filtrados = allFocos.filter(f => {
                 if (f.frp < minFRP) return false;
-                if (confianca === 'alta' && f.confidence !== 'h' && f.confidence !== 'high') return false;
-                if (confianca === 'nominal_alta' && f.confidence === 'l') return false;
                 if (daynight !== 'todos' && f.daynight !== daynight) return false;
                 return true;
             });
@@ -1091,11 +1078,7 @@
             });
 
             const janelaTempo = document.getElementById('select-janela') ? document.getElementById('select-janela').value : '24h';
-            
-            const dObj = new Date();
-            const dateToday = dObj.toISOString().split('T')[0];
-            dObj.setDate(dObj.getDate() - 1);
-            const dateYest = dObj.toISOString().split('T')[0];
+            const now = new Date();
 
             filtrados.forEach(f => {
                 let tipoLocal = 'fora'; // 'propriedade', 'buffer', 'fora'
@@ -1104,7 +1087,12 @@
                 let statusLabel = 'Fora da AOI';
                 let statusColor = '#10b981';
 
-                const inWindow = (janelaTempo === '7d' || f.acq_date === dateToday || f.acq_date === dateYest);
+                let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
+                let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
+                let fireDate = new Date(fireDateStr);
+                let diffHours = (now - fireDate) / (1000 * 60 * 60);
+
+                const inWindow = (janelaTempo === '7d' || diffHours <= 24);
 
                 if (typeof turf !== 'undefined') {
                     const pt = turf.point([f.longitude, f.latitude]);
@@ -1126,15 +1114,18 @@
                         for (let buf of bufferFeatures) {
                             if (turf.booleanPointInPolygon(pt, buf)) {
                                 tipoLocal = 'buffer';
-                                aoiNome = 'BUFFER';
+                                aoiNome = buf.properties.Municipio ? `Buffer - ${buf.properties.Municipio}` : 'BUFFER';
                                 aoiMun = buf.properties.Municipio || buf.properties.UF || '-';
-                                statusLabel = 'BUFFER';
+                                statusLabel = aoiNome;
                                 statusColor = '#f59e0b';
                                 break;
                             }
                         }
                     }
                 }
+
+                if (localizacaoFiltro === 'propriedade' && tipoLocal !== 'propriedade') return;
+                if (localizacaoFiltro === 'buffer' && tipoLocal !== 'buffer') return;
 
                 const estaDentro = (tipoLocal === 'propriedade' || tipoLocal === 'buffer');
 
@@ -1209,7 +1200,11 @@
             }
 
             const intersectedFocosFiltered = intersectedFocos.filter(f => {
-                return (janelaTempo === '7d' || f.acq_date === dateToday || f.acq_date === dateYest);
+                let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
+                let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
+                let fireDate = new Date(fireDateStr);
+                let diffHours = (now - fireDate) / (1000 * 60 * 60);
+                return (janelaTempo === '7d' || diffHours <= 24);
             });
 
             atualizarDashboardUI(intersectedFocosFiltered, totalAOI, maxFRP_AOI, totalFora, maxFRP_Fora, aoiMap);
@@ -1266,7 +1261,7 @@
             if (!focos || focos.length === 0) {
                 statusElem.innerText = 'NORMAL';
                 statusElem.style.color = '#10b981';
-                gaugeNeedle.style.rotate = '-45deg';
+                gaugeNeedle.style.rotate = '-72deg';
                 return;
             }
 
@@ -1285,7 +1280,7 @@
             if (maxFRP <= 10) {
                 statusElem.innerText = 'NORMAL';
                 statusElem.style.color = '#10b981';
-                gaugeNeedle.style.rotate = '-45deg';
+                gaugeNeedle.style.rotate = '-72deg';
                 return;
             }
 
@@ -1314,23 +1309,23 @@
                     if (score === 0) {
                         statusElem.innerText = 'NORMAL';
                         statusElem.style.color = '#10b981';
-                        gaugeNeedle.style.rotate = '-45deg';
+                        gaugeNeedle.style.rotate = '-72deg';
                     } else if (score >= 4 && score <= 6) {
                         statusElem.innerText = 'BAIXO';
                         statusElem.style.color = '#eab308';
-                        gaugeNeedle.style.rotate = '-20deg';
+                        gaugeNeedle.style.rotate = '-36deg';
                     } else if (score >= 7 && score <= 11) {
                         statusElem.innerText = 'MODERADO';
                         statusElem.style.color = '#f59e0b';
-                        gaugeNeedle.style.rotate = '10deg';
+                        gaugeNeedle.style.rotate = '0deg';
                     } else if (score >= 12 && score <= 19) {
                         statusElem.innerText = 'CRÍTICO';
                         statusElem.style.color = '#ef4444';
-                        gaugeNeedle.style.rotate = '45deg';
+                        gaugeNeedle.style.rotate = '36deg';
                     } else {
                         statusElem.innerText = 'EXTREMO';
                         statusElem.style.color = '#991b1b';
-                        gaugeNeedle.style.rotate = '135deg';
+                        gaugeNeedle.style.rotate = '72deg';
                     }
                 }
             } catch (err) {
@@ -1343,7 +1338,8 @@
             const mFrpElem = document.getElementById('kpi-max-frp-aoi');
             if (mFrpElem) mFrpElem.innerHTML = `${maxFRP_AOI.toFixed(1)} <span style="font-size:10px">MW</span>`;
             
-            const numAtingidas = Object.keys(aoiMap).length;
+            const propKeys = Object.keys(aoiMap).filter(k => aoiMap[k].tipo === 'propriedade');
+            const numAtingidas = propKeys.length;
             document.getElementById('kpi-aoi-atingidas').innerText = numAtingidas;
 
             const totalPropriedade = intersectedFocos.filter(f => f.tipo_local === 'propriedade').length;
@@ -1380,13 +1376,24 @@
             const container = document.getElementById('lista-afetadas');
             if (!container) return;
             
-            if (intersectedFocos.length === 0) {
+            const tabelaTempo = document.getElementById('select-tabela-tempo') ? document.getElementById('select-tabela-tempo').value : '24h';
+            const now = new Date();
+
+            let focosParaTabela = intersectedFocos.filter(f => {
+                let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
+                let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
+                let fireDate = new Date(fireDateStr);
+                let diffHours = (now - fireDate) / (1000 * 60 * 60);
+                return (tabelaTempo === '7d' || diffHours <= 24);
+            });
+
+            if (focosParaTabela.length === 0) {
                 container.innerHTML = `<div style="padding:15px; text-align:center; color:var(--accent-green); font-size:11px;"><i class="fa-solid fa-circle-check" style="font-size:20px; margin-bottom:4px; display:block;"></i>Nenhuma área atingida.</div>`;
                 return;
             }
             
-            // Sort intersectedFocos
-            intersectedFocos.sort((a, b) => {
+            // Sort focosParaTabela
+            focosParaTabela.sort((a, b) => {
                 let valA, valB;
                 if (currentSortField === 'frp') {
                     valA = a.frp; valB = b.frp;
@@ -1402,7 +1409,7 @@
             });
 
             container.innerHTML = '';
-            intersectedFocos.forEach((f) => {
+            focosParaTabela.forEach((f) => {
                 const div = document.createElement('div');
                 div.className = 'aoi-item has-fire';
                 div.title = 'Clique para ver o ponto exato no mapa';
@@ -1411,7 +1418,7 @@
                 const limBadge = isBuffer ? '<span style="background:var(--accent-orange);color:white;padding:2px 4px;border-radius:4px;font-size:8px;">BUFFER</span>' : '<span style="background:var(--accent-red);color:white;padding:2px 4px;border-radius:4px;font-size:8px;">PROP</span>';
                 const colorTitle = isBuffer ? '#fb923c' : '#fca5a5';
 
-                div.innerHTML = `<div><div class="aoi-name" style="color:${colorTitle};">${f.aoi_nome}</div><div class="aoi-subtext">${f.aoi_municipio} • ${f.acq_time} UTC</div></div><span style="font-weight:700; color:var(--accent-red); font-size:11px;">${f.frp.toFixed(1)} MW</span><div style="margin-left:10px;">${limBadge}</div>`;
+                div.innerHTML = `<div><div class="aoi-name" style="color:${colorTitle};">${f.aoi_nome}</div><div class="aoi-subtext">${f.aoi_municipio} • ${f.acq_time} UTC</div></div><span style="font-weight:700; color:${obterCorFRP(f.frp)}; font-size:11px;">${f.frp.toFixed(1)} MW</span><div style="margin-left:10px;">${limBadge}</div>`;
                 
                 div.addEventListener('click', function() {
                     map.flyTo([f.latitude, f.longitude], 14);
@@ -1430,48 +1437,6 @@
             renderListaAfetadas();
         }
 
-        // Fetch Real Wind Data from Open-Meteo
-        async function fetchWindData() {
-            try {
-                // Coordinates for central PI/MA (can be dynamic if needed)
-                const lat = -8.08;
-                const lon = -43.37;
-                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-                
-                if (data && data.current_weather) {
-                    const windDir = data.current_weather.winddirection;
-                    const windSpeed = data.current_weather.windspeed;
-                    
-                    // Convert degrees to cardinal directions
-                    const val = Math.floor((windDir / 22.5) + 0.5);
-                    const arr = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
-                    const cardinal = arr[(val % 16)];
-
-                    const arrow = document.getElementById('wind-arrow-icon');
-                    const text = document.getElementById('wind-data-text');
-                    
-                    if (arrow) {
-                        // The fa-location-arrow points Top-Right (45deg) by default. 
-                        // So 0 deg (North) needs a -45deg adjustment.
-                        arrow.style.transform = `rotate(${windDir - 45}deg)`;
-                        arrow.style.color = 'var(--accent-cyan)';
-                    }
-                    if (text) {
-                        text.innerHTML = `<span style="color:var(--accent-cyan);">●</span> ${cardinal}, ${windSpeed.toFixed(1)} km/h<br><span style="font-size:8px; opacity:0.6; margin-top:4px; display:block;">Fonte: Open-Meteo</span>`;
-                    }
-                }
-            } catch (error) {
-                console.error("Erro ao buscar ventos:", error);
-                const text = document.getElementById('wind-data-text');
-                if (text) text.innerText = 'Falha na conexão';
-            }
-        }
-
-        // Call on load
-        fetchWindData();
-        setInterval(fetchWindData, 3600000); // Update every hour
 
         function atualizarGraficos(focos7d, aoiMap, focosFiltrados) {
             const faixas = { '0-5': 0, '5-10': 0, '10-25': 0, '25-50': 0, '> 50': 0 };
@@ -1529,17 +1494,40 @@
 
             const elemChartMun = document.getElementById('chartMunicipios');
             if (elemChartMun) {
-                const labelsMun = Object.keys(aoiMap).slice(0, 5);
-                const dataMun = labelsMun.map(k => aoiMap[k].count);
+                const tipoSelecionado = window.chartLocal || 'propriedade';
+                let chartMap = {};
+                const getRange = (frp) => {
+                    if (frp < 5) return '0-5 MW';
+                    if (frp < 10) return '5-10 MW';
+                    if (frp < 25) return '10-25 MW';
+                    if (frp < 50) return '25-50 MW';
+                    return '> 50 MW';
+                };
+                focosFiltrados.forEach(f => {
+                    if (f.tipo_local === tipoSelecionado) {
+                        let range = getRange(f.frp);
+                        let key = `${f.aoi_nome} (${range})`;
+                        if (!chartMap[key]) chartMap[key] = { count: 0, color: obterCorFRP(f.frp) };
+                        chartMap[key].count++;
+                    }
+                });
+                let sortedKeys = Object.keys(chartMap).sort((a,b) => chartMap[b].count - chartMap[a].count).slice(0, 8);
+                
+                const labelsMun = sortedKeys;
+                const dataMun = sortedKeys.map(k => chartMap[k].count);
+                const bgColors = sortedKeys.length > 0 ? sortedKeys.map(k => chartMap[k].color) : ['#334155'];
+
+                const noDataLabel = tipoSelecionado === 'buffer' ? 'Sem Focos no Buffer' : 'Sem Focos nas Propriedades';
+
                 const ctxMun = elemChartMun.getContext('2d');
                 if (chartMunInstance) chartMunInstance.destroy();
                 chartMunInstance = new Chart(ctxMun, {
                     type: 'doughnut',
                     data: {
-                        labels: labelsMun.length > 0 ? labelsMun : ['Sem Focos na AOI'],
+                        labels: labelsMun.length > 0 ? labelsMun : [noDataLabel],
                         datasets: [{
                             data: dataMun.length > 0 ? dataMun : [1],
-                            backgroundColor: ['#ef4444', '#f97316', '#06b6d4', '#8b5cf6', '#10b981'],
+                            backgroundColor: bgColors,
                             borderWidth: 0
                         }]
                     },
@@ -1555,12 +1543,15 @@
                         onClick: (event, elements) => {
                             if (elements.length > 0) {
                                 const idx = elements[0].index;
-                                const aoiNome = chartMunInstance.data.labels[idx];
-                                if (aoiNome === 'Sem Focos na AOI') return;
+                                const fullLabel = chartMunInstance.data.labels[idx];
+                                if (fullLabel === 'Sem Focos nas Propriedades' || fullLabel === 'Sem Focos no Buffer') return;
+                                
+                                const aoiNomeMatch = fullLabel.match(/^(.*) \(/);
+                                const aoiNome = aoiNomeMatch ? aoiNomeMatch[1] : fullLabel;
                                 
                                 if (window.AOI_GEOJSON) {
-                                    if (aoiNome === 'BUFFER') {
-                                        let targetFocos = intersectedFocos.filter(f => f.aoi_nome === 'BUFFER');
+                                    if (tipoSelecionado === 'buffer') {
+                                        let targetFocos = intersectedFocos.filter(f => f.aoi_nome === aoiNome);
                                         if (targetFocos.length > 0) {
                                             const bounds = L.latLngBounds(targetFocos.map(f => [f.latitude, f.longitude]));
                                             map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
@@ -1654,38 +1645,67 @@
             }
         }
 
-        function abrirRelatorio() {
+        function abrirRelatorio(periodo = '7d') {
             const dataHoje = new Date().toLocaleDateString('pt-BR');
             const stamp = document.getElementById('print-time-stamp');
             if (stamp) stamp.innerText = 'Impresso em: ' + new Date().toLocaleString('pt-BR');
             
+            const now = new Date();
+
+            let focosRelatorio = intersectedFocos;
+            if (periodo === '24h') {
+                focosRelatorio = intersectedFocos.filter(f => {
+                    let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
+                    let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
+                    let fireDate = new Date(fireDateStr);
+                    let diffHours = (now - fireDate) / (1000 * 60 * 60);
+                    return diffHours <= 24;
+                });
+            }
+
+            let kpiAoiVal = focosRelatorio.length;
+            let kpiMaxFrpVal = 0;
+            focosRelatorio.forEach(f => {
+                if (f.frp > kpiMaxFrpVal) kpiMaxFrpVal = f.frp;
+            });
+
             let tabela = '';
 
-            if (intersectedFocos.length > 0) {
+            if (focosRelatorio.length > 0) {
                 tabela = `
-                    <table style="width:100%; border-collapse:collapse; margin-top:8px;">
-                        <thead><tr style="background:#1e293b; border-bottom:2px solid #475569;"><th style="padding:6px; text-align:left;">Localização</th><th style="padding:6px; text-align:center;">FRP</th><th style="padding:6px; text-align:center;">Hora (UTC)</th><th style="padding:6px; text-align:center;">Coordenadas</th></tr></thead>
-                        <tbody>${intersectedFocos.map(f => {
+                    <table style="width:100%; border-collapse:collapse; margin-top:8px; font-size:12px;">
+                        <thead><tr style="background:#1e293b; border-bottom:2px solid #475569;"><th style="padding:6px; text-align:left;">Localização</th><th style="padding:6px; text-align:center;">FRP</th><th style="padding:6px; text-align:center;">Data / Hora (UTC)</th><th style="padding:6px; text-align:center;">Coordenadas</th></tr></thead>
+                        <tbody>${focosRelatorio.map(f => {
                             let hora = String(f.acq_time).padStart(4, '0');
                             let horaFormatada = hora.length === 4 ? `${hora.slice(0,2)}:${hora.slice(2,4)}` : f.acq_time;
-                            return `<tr style="border-bottom:1px solid #334155;"><td style="padding:6px; color:#06b6d4; font-weight:600;">${f.aoi_nome || '-'}</td><td style="padding:6px; text-align:center; font-weight:700; color:${obterCorFRP(f.frp)};">${f.frp.toFixed(1)} MW</td><td style="padding:6px; text-align:center;">${horaFormatada}</td><td style="padding:6px; text-align:center; font-family:monospace;">${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</td></tr>`;
+                            return `<tr style="border-bottom:1px solid #334155;">
+                                <td style="padding:6px; color:#06b6d4; font-weight:600;">${f.aoi_nome || '-'}</td>
+                                <td style="padding:6px; text-align:center; font-weight:700; color:${obterCorFRP(f.frp)};">${f.frp.toFixed(1)} MW</td>
+                                <td style="padding:6px; text-align:center;">${f.acq_date}<br><span style="font-size:10px; color:#94a3b8;">${horaFormatada}</span></td>
+                                <td style="padding:6px; text-align:center; font-family:monospace;">${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</td>
+                            </tr>`;
                         }).join('')}</tbody>
                     </table>`;
             } else {
-                tabela = '<p style="color:#10b981; margin-top:8px; text-align:center;"><b>Status Verde:</b> Nenhum foco dentro das propriedades no período.</p>';
+                tabela = '<p style="color:#10b981; margin-top:15px; text-align:center; font-size:14px;"><b>Status Verde:</b> Nenhum foco detectado nas propriedades no período selecionado.</p>';
             }
 
-            const kpiAoiVal = document.getElementById('kpi-focos-aoi') ? document.getElementById('kpi-focos-aoi').innerText : '0';
-            const kpiMaxFrpVal = document.getElementById('kpi-max-frp-aoi') ? document.getElementById('kpi-max-frp-aoi').innerText : '0.0 MW';
-
             document.getElementById('relatorio-conteudo').innerHTML = `
-                <div style="text-align:center; border-bottom:1px solid var(--border-color); padding-bottom:6px; margin-bottom:8px;">
-                    <h3 style="font-size:14px; color:#f8fafc;">BOLETIM DE QUEIMADAS CSN • NOAA-21 (7 DIAS)</h3>
-                    <small style="color:var(--text-muted);">Data: ${dataHoje} | Horário de Brasília (UTC-3)</small>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:6px; margin-bottom:8px;">
+                    <div>
+                        <h3 style="font-size:14px; color:#f8fafc; margin:0; text-align:left;">BOLETIM DE QUEIMADAS CSN • NOAA-21</h3>
+                        <small style="color:var(--text-muted); display:block; text-align:left;">Data: ${dataHoje} | Horário de Brasília (UTC-3)</small>
+                    </div>
+                    <div>
+                        <select class="form-control" style="width:140px; font-size:11px; padding:4px;" onchange="abrirRelatorio(this.value)">
+                            <option value="7d" ${periodo === '7d' ? 'selected' : ''}>Últimos 7 Dias</option>
+                            <option value="24h" ${periodo === '24h' ? 'selected' : ''}>Últimas 24 Horas</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="display:flex; justify-content:space-around; background:#1e293b; padding:8px; border-radius:6px; text-align:center; margin-bottom:10px;">
-                    <div><small style="color:#ef4444; font-weight:700;">NA AOI</small><div style="font-weight:bold; font-size:16px; color:#ef4444;">${kpiAoiVal}</div></div>
-                    <div><small style="color:#f59e0b; font-weight:700;">MAIOR FRP NA AOI</small><div style="font-weight:bold; font-size:16px; color:#f59e0b;">${kpiMaxFrpVal}</div></div>
+                    <div><small style="color:#ef4444; font-weight:700;">TOTAL DE FOCOS</small><div style="font-weight:bold; font-size:16px; color:#ef4444;">${kpiAoiVal}</div></div>
+                    <div><small style="color:#f59e0b; font-weight:700;">MAIOR FRP REGISTRADO</small><div style="font-weight:bold; font-size:16px; color:#f59e0b;">${kpiMaxFrpVal.toFixed(1)} MW</div></div>
                 </div>
                 ${tabela}
             `;
@@ -1745,6 +1765,9 @@
             
             const elemChartRel = document.getElementById('chartRelatorios');
             if (elemChartRel) {
+                const height = Math.max(150, props.length * 35);
+                elemChartRel.parentElement.style.height = height + 'px';
+
                 const ctxRel = elemChartRel.getContext('2d');
                 if (chartRelatoriosInstance) chartRelatoriosInstance.destroy();
                 chartRelatoriosInstance = new Chart(ctxRel, {
@@ -1755,7 +1778,8 @@
                             label: 'Relatórios',
                             data: counts.length > 0 ? counts : [0],
                             backgroundColor: '#06b6d4',
-                            borderRadius: 4
+                            borderRadius: 4,
+                            barPercentage: 0.8
                         }]
                     },
                     options: {
@@ -1765,7 +1789,7 @@
                         plugins: { legend: { display: false } },
                         scales: {
                             x: { ticks: { color: '#94a3b8', font: { size: 9 }, stepSize: 1 }, grid: { color: '#334155' } },
-                            y: { ticks: { color: '#94a3b8', font: { size: 9 } } }
+                            y: { ticks: { display: false }, grid: { display: false } }
                         },
                         onClick: (event, elements) => {
                             if (elements.length > 0) {
@@ -1786,12 +1810,59 @@
                                 }
                             }
                         }
-                    }
+                    },
+                    plugins: [{
+                        id: 'labelsInside',
+                        afterDatasetsDraw(chart) {
+                            const ctx = chart.ctx;
+                            chart.data.datasets.forEach((dataset, i) => {
+                                const meta = chart.getDatasetMeta(i);
+                                meta.data.forEach((bar, index) => {
+                                    const label = chart.data.labels[index];
+                                    if (label === 'Sem Relatórios') return;
+                                    
+                                    ctx.fillStyle = '#ffffff';
+                                    ctx.font = 'bold 11px sans-serif';
+                                    ctx.textAlign = 'left';
+                                    ctx.textBaseline = 'middle';
+                                    
+                                    const xPos = bar.base + 8;
+                                    ctx.fillText(label, xPos, bar.y);
+                                });
+                            });
+                        }
+                    }]
                 });
             }
         }
 
         window.onload = () => {
+            const ctxRisco = document.getElementById('chartRiscoGauge');
+            if (ctxRisco) {
+                chartRiscoGaugeInstance = new Chart(ctxRisco.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        datasets: [{
+                            data: [20, 20, 20, 20, 20],
+                            backgroundColor: ['#10b981', '#eab308', '#f59e0b', '#ef4444', '#991b1b'],
+                            borderWidth: 0,
+                            cutout: '75%'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        rotation: -90,
+                        circumference: 180,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: false }
+                        },
+                        events: [] // Disable interactions
+                    }
+                });
+            }
+
             carregarRelatorios();
             carregarAOIs();
             atualizarFocosBackendProxy();
