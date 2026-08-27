@@ -148,6 +148,19 @@ def get_status():
         "firms_key_configured": bool(FIRMS_KEY)
     }
 
+@app.get("/api/focos/7d_csv")
+def proxy_nasa_7d_csv():
+    """
+    Proxy simples para contornar o bloqueio de CORS no arquivo CSV estático de 7 dias da NASA.
+    """
+    url = f"https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-21-viirs-c2/csv/J2_VIIRS_C2_South_America_7d.csv"
+    try:
+        resp = requests.get(url, timeout=20)
+        resp.raise_for_status()
+        return Response(content=resp.text, media_type="text/csv")
+    except Exception as e:
+        return Response(content=f"Error fetching NASA CSV: {str(e)}", status_code=502)
+
 @app.get("/api/focos/24h")
 def get_focos_24h(
     min_frp: float = 0.0,
