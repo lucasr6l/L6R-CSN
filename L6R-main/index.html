@@ -186,6 +186,11 @@
         .modal-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
 
         .leaflet-popup-content-wrapper { background: #1e293b !important; color: #f8fafc !important; border: 1px solid #475569; border-radius: 8px !important; }
+        .leaflet-popup-content { max-height: 35vh; overflow-y: auto; padding-right: 5px; }
+        /* Custom scrollbar para o popup */
+        .leaflet-popup-content::-webkit-scrollbar { width: 6px; }
+        .leaflet-popup-content::-webkit-scrollbar-track { background: transparent; }
+        .leaflet-popup-content::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 
         .leaflet-popup-tip { background: #1e293b !important; }
 
@@ -476,6 +481,12 @@
                 display: flex !important;
                 align-items: center;
                 justify-content: center;
+            }
+            /* Diminuir agressivamente o popup no celular */
+            .leaflet-popup-content {
+                max-height: 20vh !important;
+                margin: 10px 15px 10px 10px !important;
+                font-size: 10px !important;
             }
         }
         
@@ -2008,11 +2019,11 @@
                     if(satBtn) satBtn.classList.add('active');
                     if(ruasBtn) ruasBtn.classList.remove('active');
                     map.addLayer(googleSat);
-                    map.removeLayer(googleStreets);
+                    map.removeLayer(openStreetMap);
                 } else {
                     if(ruasBtn) ruasBtn.classList.add('active');
                     if(satBtn) satBtn.classList.remove('active');
-                    map.addLayer(googleStreets);
+                    map.addLayer(openStreetMap);
                     map.removeLayer(googleSat);
                 }
                 return;
