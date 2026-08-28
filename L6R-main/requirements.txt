@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+requests
+pandas
+geopandas
+shapely
+a2wsgi
