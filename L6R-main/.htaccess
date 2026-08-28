@@ -1,0 +1,10 @@
+# Desliga a interferência do WordPress nesta pasta
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /geoportal/
+</IfModule>
+
+# Força o Phusion Passenger (HostGator) a ligar o Python aqui
+PassengerEnabled on
+PassengerAppType wsgi
+PassengerStartupFile passenger_wsgi.py
