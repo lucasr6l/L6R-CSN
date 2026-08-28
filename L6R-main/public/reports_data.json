@@ -7,14 +7,6 @@
       "classificacao": "Crítico"
     }
   ],
-  "MILAGROSO": [
-    {
-      "codigo": "A234.2",
-      "data": "2026-08-02 00:00:00",
-      "focos": 13.0,
-      "classificacao": "Atenção"
-    }
-  ],
   "BOQUEIRÃO": [
     {
       "codigo": "A234.2",
@@ -57,6 +49,26 @@
       "data": "2026-08-25 00:00:00",
       "focos": 7.0,
       "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.25",
+      "data": "2026-08-27 00:00:00",
+      "focos": 6.0,
+      "classificacao": "Incêndio Iminente"
+    },
+    {
+      "codigo": "A234.26",
+      "data": "2026-08-27 00:00:00",
+      "focos": 25.0,
+      "classificacao": "Incêndio Iminente"
+    }
+  ],
+  "MILAGROSO": [
+    {
+      "codigo": "A234.2",
+      "data": "2026-08-02 00:00:00",
+      "focos": 13.0,
+      "classificacao": "Atenção"
     }
   ],
   "AREIA": [
@@ -65,14 +77,6 @@
       "data": "2026-08-02 00:00:00",
       "focos": 13.0,
       "classificacao": "Atenção"
-    }
-  ],
-  "UICA (IRACI)": [
-    {
-      "codigo": "A234.3",
-      "data": "2026-08-03 00:00:00",
-      "focos": 3.0,
-      "classificacao": "Crítico"
     }
   ],
   "UMBAÚBA": [
@@ -87,6 +91,14 @@
       "data": "2026-08-05 00:00:00",
       "focos": 2.0,
       "classificacao": "Atenção"
+    }
+  ],
+  "UICA (IRACI)": [
+    {
+      "codigo": "A234.3",
+      "data": "2026-08-03 00:00:00",
+      "focos": 3.0,
+      "classificacao": "Crítico"
     }
   ],
   "MALHADA GRANDE (FRRC-PAPAGAIO)": [
@@ -169,6 +181,26 @@
       "classificacao": "Atenção"
     }
   ],
+  "IÉU (FFC)": [
+    {
+      "codigo": "A234.13",
+      "data": "2026-08-15 00:00:00",
+      "focos": 9.0,
+      "classificacao": "Crítico"
+    },
+    {
+      "codigo": "A234.25",
+      "data": "2026-08-27 00:00:00",
+      "focos": 6.0,
+      "classificacao": "Incêndio Iminente"
+    },
+    {
+      "codigo": "A234.26",
+      "data": "2026-08-27 00:00:00",
+      "focos": 25.0,
+      "classificacao": "Incêndio Iminente"
+    }
+  ],
   "UIQUINHA": [
     {
       "codigo": "A234.13",
@@ -181,14 +213,6 @@
       "data": "2026-08-18 00:00:00",
       "focos": 7.0,
       "classificacao": "Atenção"
-    }
-  ],
-  "IÉU (FFC)": [
-    {
-      "codigo": "A234.13",
-      "data": "2026-08-15 00:00:00",
-      "focos": 9.0,
-      "classificacao": "Crítico"
     }
   ],
   "RIACHO DA AREIA": [
@@ -275,6 +299,26 @@
       "data": "2026-08-23 00:00:00",
       "focos": 11.0,
       "classificacao": "Atenção"
+    }
+  ],
+  "LAGOINHAS": [
+    {
+      "codigo": "A234.24",
+      "data": "2026-08-26 00:00:00",
+      "focos": 3.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.25",
+      "data": "2026-08-27 00:00:00",
+      "focos": 6.0,
+      "classificacao": "Incêndio Iminente"
+    },
+    {
+      "codigo": "A234.26",
+      "data": "2026-08-27 00:00:00",
+      "focos": 25.0,
+      "classificacao": "Incêndio Iminente"
     }
   ],
   "FAZENDA DA CALÇADA (B53)": [
