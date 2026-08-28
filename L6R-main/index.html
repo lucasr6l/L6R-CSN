@@ -14,6 +14,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script>
+        // Corrige o aviso do Leaflet.heat sobre readback frequente em animações Canvas2D
+        const originalGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function(type, options) {
+            if (type === '2d') {
+                options = Object.assign({}, options, { willReadFrequently: true });
+            }
+            return originalGetContext.call(this, type, options);
+        };
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('service-worker.js')
@@ -241,6 +249,68 @@
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
 
+        .timeline-player {
+            background: var(--bg-panel);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            width: 100%;
+        }
+        #btn-timeline-play {
+            background: var(--accent-orange);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: 0.2s;
+        }
+        #btn-timeline-play:hover {
+            transform: scale(1.1);
+            background: #f97316;
+        }
+        @keyframes pulse-play {
+            0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+        }
+        .timeline-playing #btn-timeline-play {
+            animation: pulse-play 1.5s infinite;
+        }
+        .timeline-slider-wrapper {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #timeline-slider {
+            flex: 1;
+            accent-color: var(--accent-orange);
+            cursor: pointer;
+        }
+        .timeline-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .timeline-current {
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            text-align: center;
+        }
     </style>
 
 </head>
@@ -392,6 +462,21 @@
                 </div>
                 
                 <div id="nasa-error-msg" style="color: #ef4444; font-size: 11px; text-align: center; margin-top: 10px; display: none; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.4);"></div>
+
+                <!-- Player Timeline -->
+                <div id="timeline-player-container" class="timeline-player" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <span style="font-size: 10px; font-weight: bold; color: var(--text-muted);">MÁQUINA DO TEMPO</span>
+                        <div class="timeline-current" id="timeline-current-time">--/--/---- --:--</div>
+                    </div>
+                    
+                    <div class="timeline-slider-wrapper">
+                        <button id="btn-timeline-play" onclick="toggleTimelinePlay()"><i class="fa-solid fa-play"></i></button>
+                        <div class="timeline-label" id="timeline-label-start">--/--</div>
+                        <input type="range" id="timeline-slider" min="0" max="100" value="100" oninput="onTimelineScrub()">
+                        <div class="timeline-label" id="timeline-label-end">--/--</div>
+                    </div>
+                </div>
 
             </div>
 
@@ -587,6 +672,8 @@
             <div class="map-floating-panel">
                 <button class="map-floating-btn" onclick="centralizarTodasAOIs()"><i class="fa-solid fa-expand"></i> CENTRALIZAR MAPA</button>
             </div>
+
+
 
 
 
@@ -876,19 +963,23 @@
             features.forEach((feat, idx) => {
 
                 const p = feat.properties;
-
                 const nome = p.FAZENDA || p.Name || p.name || `Área #${idx + 1}`;
-
-                const mun = p.Municipio || p.source_layer || '';
-
                 const div = document.createElement('div');
-
                 div.className = 'aoi-item';
+                div.style.justifyContent = 'flex-start';
+                div.style.gap = '10px';
 
-                div.innerHTML = `<div><div class="aoi-name">${nome}</div><div class="aoi-subtext">${mun}</div></div><i class="fa-solid fa-crosshairs" style="color:var(--text-muted);"></i>`;
+                div.innerHTML = `
+                    <div style="background:var(--bg-panel); border:1px solid rgba(255,255,255,0.1); border-radius:6px; width: 28px; height: 28px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="fa-solid fa-map" style="color:#10b981; font-size:12px;"></i>
+                    </div>
+                    <div style="flex:1; overflow:hidden;">
+                        <div class="aoi-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${nome}">${nome}</div>
+                    </div>
+                    <i class="fa-solid fa-crosshairs" style="color:var(--text-muted); font-size:12px; flex-shrink:0;"></i>
+                `;
 
                 div.onclick = () => { map.fitBounds(L.geoJSON(feat).getBounds(), { maxZoom: 14 }); };
-
                 container.appendChild(div);
 
             });
@@ -980,7 +1071,7 @@
 
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 20000);
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
 
                 // Utilizando a base estática de 7 dias da NASA LANCE (NOAA-21 / J2) para a América do Sul
                 // A requisição é feita via backend local (/api/focos/7d_csv) para evitar bloqueios de CORS (Cross-Origin Resource Sharing).
@@ -1022,6 +1113,7 @@
                 }
 
                 if (focos.length > 0) {
+                    initTimeline(focos);
                     processarFocos(focos);
                 } else {
                     console.warn('⚠️ [NASA VAZIO] Nenhum foco registrado nas últimas 24h na região.');
@@ -1078,7 +1170,7 @@
             });
 
             const janelaTempo = document.getElementById('select-janela') ? document.getElementById('select-janela').value : '24h';
-            const now = new Date();
+            const now = window.timelineCurrentDate || new Date();
 
             filtrados.forEach(f => {
                 let tipoLocal = 'fora'; // 'propriedade', 'buffer', 'fora'
@@ -1092,9 +1184,15 @@
                 let fireDate = new Date(fireDateStr);
                 let diffHours = (now - fireDate) / (1000 * 60 * 60);
 
-                const inWindow = (janelaTempo === '7d' || diffHours <= 24);
+                const inWindow = diffHours >= 0 && (janelaTempo === '7d' || diffHours <= 24);
 
-                if (typeof turf !== 'undefined') {
+                if (typeof f.tipoLocal !== 'undefined') {
+                    tipoLocal = f.tipoLocal;
+                    aoiNome = f.aoiNome;
+                    aoiMun = f.aoiMun;
+                    statusLabel = f.statusLabel;
+                    statusColor = f.statusColor;
+                } else if (typeof turf !== 'undefined') {
                     const pt = turf.point([f.longitude, f.latitude]);
                     
                     // 1. Checa primeiro se está REALMENTE dentro da propriedade (fazenda)
@@ -1122,6 +1220,13 @@
                             }
                         }
                     }
+                    
+                    // Cache the results so we don't run Turf again on scrub
+                    f.tipoLocal = tipoLocal;
+                    f.aoiNome = aoiNome;
+                    f.aoiMun = aoiMun;
+                    f.statusLabel = statusLabel;
+                    f.statusColor = statusColor;
                 }
 
                 if (localizacaoFiltro === 'propriedade' && tipoLocal !== 'propriedade') return;
@@ -1185,8 +1290,7 @@
                         <div class="popup-row"><strong>Localização:</strong> <span>${badgeLocal}</span></div>
                         <div class="popup-row"><strong>Status / Área:</strong> <span style="color:${statusColor};font-weight:700;">${statusLabel}</span></div>
                         ${aoiMun ? `<div class="popup-row"><strong>Município:</strong> <span>${aoiMun}</span></div>` : ''}
-                        <div class="popup-row"><strong>Data/Hora:</strong> <span>${f.acq_date} ${f.acq_time} UTC</span></div>
-                        <div class="popup-row"><strong>Confiança:</strong> <span>${f.confidence}</span></div>
+                        <div class="popup-row"><strong>Data/Hora:</strong> <span>${f.acq_date} ${f.acq_time.toString().padStart(4, '0').replace(/(\d{2})(\d{2})/, '$1:$2')} UTC</span></div>
                         <div class="popup-row"><strong>Coordenadas:</strong> <span>${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</span></div>
                     `);
 
@@ -1377,14 +1481,14 @@
             if (!container) return;
             
             const tabelaTempo = document.getElementById('select-tabela-tempo') ? document.getElementById('select-tabela-tempo').value : '24h';
-            const now = new Date();
+            const now = window.timelineCurrentDate || new Date();
 
             let focosParaTabela = intersectedFocos.filter(f => {
                 let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
                 let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
                 let fireDate = new Date(fireDateStr);
                 let diffHours = (now - fireDate) / (1000 * 60 * 60);
-                return (tabelaTempo === '7d' || diffHours <= 24);
+                return diffHours >= 0 && (tabelaTempo === '7d' || diffHours <= 24);
             });
 
             if (focosParaTabela.length === 0) {
@@ -1416,9 +1520,9 @@
                 
                 const isBuffer = f.tipo_local === 'buffer';
                 const limBadge = isBuffer ? '<span style="background:var(--accent-orange);color:white;padding:2px 4px;border-radius:4px;font-size:8px;">BUFFER</span>' : '<span style="background:var(--accent-red);color:white;padding:2px 4px;border-radius:4px;font-size:8px;">PROP</span>';
-                const colorTitle = isBuffer ? '#fb923c' : '#fca5a5';
-
-                div.innerHTML = `<div><div class="aoi-name" style="color:${colorTitle};">${f.aoi_nome}</div><div class="aoi-subtext">${f.aoi_municipio} • ${f.acq_time} UTC</div></div><span style="font-weight:700; color:${obterCorFRP(f.frp)}; font-size:11px;">${f.frp.toFixed(1)} MW</span><div style="margin-left:10px;">${limBadge}</div>`;
+                const colorTitle = f.tipo_local === 'buffer' ? '#f59e0b' : '#ef4444';
+                const timeFmt = f.acq_time.toString().padStart(4, '0').replace(/(\d{2})(\d{2})/, '$1:$2');
+                div.innerHTML = `<div><div class="aoi-name" style="color:${colorTitle};">${f.aoi_nome}</div><div class="aoi-subtext">${f.aoi_municipio} • ${timeFmt} UTC</div></div><span style="font-weight:700; color:${obterCorFRP(f.frp)}; font-size:11px;">${f.frp.toFixed(1)} MW</span><div style="margin-left:10px;">${limBadge}</div>`;
                 
                 div.addEventListener('click', function() {
                     map.flyTo([f.latitude, f.longitude], 14);
@@ -1650,16 +1754,22 @@
             const stamp = document.getElementById('print-time-stamp');
             if (stamp) stamp.innerText = 'Impresso em: ' + new Date().toLocaleString('pt-BR');
             
-            const now = new Date();
+            const now = window.timelineCurrentDate || new Date();
 
             let focosRelatorio = intersectedFocos;
             if (periodo === '24h') {
-                focosRelatorio = intersectedFocos.filter(f => {
+                focosRelatorio = focosRelatorio.filter(f => {
                     let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
-                    let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
-                    let fireDate = new Date(fireDateStr);
-                    let diffHours = (now - fireDate) / (1000 * 60 * 60);
-                    return diffHours <= 24;
+                    let fireDate = new Date(`${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`);
+                    let diff = (now - fireDate) / (1000 * 60 * 60);
+                    return diff >= 0 && diff <= 24;
+                });
+            } else {
+                focosRelatorio = focosRelatorio.filter(f => {
+                    let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
+                    let fireDate = new Date(`${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`);
+                    let diff = (now - fireDate) / (1000 * 60 * 60);
+                    return diff >= 0;
                 });
             }
 
@@ -1867,6 +1977,114 @@
             carregarAOIs();
             atualizarFocosBackendProxy();
         };
+
+        // --- TIMELINE PLAYER LOGIC ---
+        let timelineInterval = null;
+        let timelineMinTime = 0;
+        let timelineMaxTime = 0;
+        let timelineIsPlaying = false;
+        
+        function initTimeline(focos) {
+            if (!focos || focos.length === 0) return;
+            
+            let min = Infinity;
+            let max = -Infinity;
+            
+            focos.forEach(f => {
+                let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
+                let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
+                let t = new Date(fireDateStr).getTime();
+                if (t < min) min = t;
+                if (t > max) max = t;
+            });
+            
+            if (min === Infinity || min === max) return;
+            
+            max = new Date().getTime(); // Allow up to current real time
+            
+            timelineMinTime = min;
+            timelineMaxTime = max;
+            
+            document.getElementById('timeline-player-container').style.display = 'flex';
+            document.getElementById('timeline-label-start').innerText = new Date(min).toLocaleDateString('pt-BR').substring(0,5);
+            document.getElementById('timeline-label-end').innerText = 'Agora';
+            
+            const slider = document.getElementById('timeline-slider');
+            if (!window.timelineCurrentDate) {
+                slider.value = 100;
+                window.timelineCurrentDate = new Date(max);
+                updateTimelineUI();
+            }
+        }
+        
+        function onTimelineScrub() {
+            if (timelineIsPlaying) toggleTimelinePlay();
+            
+            const slider = document.getElementById('timeline-slider');
+            const percent = parseInt(slider.value, 10);
+            
+            const timeRange = timelineMaxTime - timelineMinTime;
+            const targetTime = timelineMinTime + (timeRange * (percent / 100));
+            
+            window.timelineCurrentDate = new Date(targetTime);
+            updateTimelineUI();
+            
+            if (typeof allFocos !== 'undefined') {
+                const relevantFocos = allFocos.filter(f => f.tipoLocal === 'propriedade' || f.tipoLocal === 'buffer');
+                processarFocos(relevantFocos);
+            }
+        }
+        
+        function updateTimelineUI() {
+            if (!window.timelineCurrentDate) return;
+            
+            const dt = window.timelineCurrentDate;
+            const dateStr = dt.toLocaleDateString('pt-BR');
+            document.getElementById('timeline-current-time').innerText = `${dateStr}`;
+        }
+        
+        function toggleTimelinePlay() {
+            const btn = document.getElementById('btn-timeline-play');
+            const slider = document.getElementById('timeline-slider');
+            const container = document.getElementById('timeline-player-container');
+            
+            if (timelineIsPlaying) {
+                timelineIsPlaying = false;
+                clearInterval(timelineInterval);
+                btn.innerHTML = '<i class="fa-solid fa-play"></i>';
+                container.classList.remove('timeline-playing');
+            } else {
+                timelineIsPlaying = true;
+                btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+                container.classList.add('timeline-playing');
+                
+                if (parseInt(slider.value, 10) >= 100) {
+                    slider.value = 0;
+                }
+                
+                timelineInterval = setInterval(() => {
+                    let val = parseInt(slider.value, 10);
+                    val += 1; 
+                    
+                    if (val >= 100) {
+                        val = 100;
+                        toggleTimelinePlay(); 
+                    }
+                    
+                    slider.value = val;
+                    
+                    const timeRange = timelineMaxTime - timelineMinTime;
+                    const targetTime = timelineMinTime + (timeRange * (val / 100));
+                    window.timelineCurrentDate = new Date(targetTime);
+                    updateTimelineUI();
+                    
+                    if (typeof allFocos !== 'undefined') {
+                        const relevantFocos = allFocos.filter(f => f.tipoLocal === 'propriedade' || f.tipoLocal === 'buffer');
+                        processarFocos(relevantFocos);
+                    }
+                }, 400); // Increased interval to 400ms (slower playback)
+            }
+        }
 
     </script>
 

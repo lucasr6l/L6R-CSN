@@ -155,9 +155,9 @@ def proxy_nasa_7d_csv():
     """
     url = f"https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-21-viirs-c2/csv/J2_VIIRS_C2_South_America_7d.csv"
     try:
-        resp = requests.get(url, timeout=20)
+        resp = requests.get(url, timeout=60)
         resp.raise_for_status()
-        return Response(content=resp.text, media_type="text/csv")
+        return Response(content=resp.content, media_type="text/csv")
     except Exception as e:
         return Response(content=f"Error fetching NASA CSV: {str(e)}", status_code=502)
 

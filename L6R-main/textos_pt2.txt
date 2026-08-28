@@ -1,0 +1,82 @@
+11: <title>GEOPORTAL CSN | Monitoramento de Queimadas - NOAA-21</title>
+262: <div class="brand-title">DASHBOARD CSN • FOCOS DE CALOR</div>
+264: <div class="brand-subtitle"><i class="fa-solid fa-satellite"></i> VIIRS NOAA-21 (375m) • 24h</div>
+274: <div class="clock-label"><i class="fa-solid fa-location-dot"></i> Horário de Brasília (UTC-3)</div>
+276: <div class="clock-time brasilia" id="clock-brt">--:--:-- BRT</div>
+278: <div class="clock-date" id="date-brt">--/--/----</div>
+286: <div class="clock-label"><i class="fa-solid fa-globe"></i> Tempo Universal (UTC/GMT)</div>
+288: <div class="clock-time" id="clock-utc">--:--:-- UTC</div>
+290: <div class="clock-date" id="date-utc">--/--/----</div>
+302: <button class="btn-header" onclick="abrirRelatorio()"><i class="fa-solid fa-file-pdf"></i> Relatório</button>
+312: <div class="sidebar-tab active" onclick="switchTab('tab-dash', this)" title="Painel Operacional"><i class="fa-solid fa-layer-group"></i></div>
+313: <div class="sidebar-tab" onclick="switchTab('tab-filtros', this)" title="Filtros"><i class="fa-solid fa-filter"></i></div>
+314: <div class="sidebar-tab" onclick="switchTab('tab-aoi', this)" title="Propriedades"><i class="fa-solid fa-draw-polygon"></i></div>
+315: <div class="sidebar-tab" onclick="switchTab('tab-clima', this)" title="Dados Climáticos"><i class="fa-solid fa-cloud-sun-rain"></i></div>
+316: <div class="sidebar-tab" onclick="switchTab('tab-graficos', this)" title="Estatísticas"><i class="fa-solid fa-chart-line"></i></div>
+330: <div class="alert-box-title">ALERTA CRÍTICO DE INCÊNDIO</div>
+332: <div class="alert-box-desc" id="alert-box-text">Detectados focos com FRP > 10 MW nas fazendas!</div>
+340: <div class="kpi-title">Focos nas Propriedades</div>
+347: <div class="kpi-title">Maior FRP nas Propriedades</div>
+349: <div class="kpi-sub">nas últimas 24h</div>
+352: <div class="kpi-title">Fazendas Atingidas</div>
+354: <div class="kpi-sub">De 100 cadastradas</div>
+375: <span>REGISTRO DE PONTOS DE CALOR</span>
+377: <option value="24h" selected>24h</option>
+378: <option value="7d">7 Dias</option>
+402: <label><i class="fa-solid fa-bolt"></i> Filtro de Potência FRP Mínimo (MW):</label>
+408: <div class="range-value" id="val-frp">10 MW</div>
+418: <label><i class="fa-solid fa-map-location-dot"></i> Localização do Foco:</label>
+420: <option value="todos" selected>Geral (Todos os focos)</option>
+421: <option value="propriedade">Apenas Propriedades</option>
+422: <option value="buffer">Apenas Buffer</option>
+428: <label><i class="fa-solid fa-clock"></i> Janela de Tempo (Mapa):</label>
+432: <option value="24h" selected>Últimas 24 Horas (Recente)</option>
+434: <option value="7d">Últimos 7 Dias (Histórico)</option>
+442: <label><i class="fa-solid fa-sun"></i> Turno do Satélite:</label>
+446: <option value="todos" selected>Dia e Noite</option>
+448: <option value="D">Apenas Diurno (D)</option>
+450: <option value="N">Apenas Noturno (N)</option>
+460: <div class="form-group"><input type="text" class="form-control" placeholder="🔍 Buscar propriedade..." onkeyup="filtrarListaAOI(this.value)"></div>
+462: <div class="section-title"><span>Propriedades (<span id="count-aoi-total">91</span>)</span></div>
+470: <div class="section-title"><span>Dados Climáticos</span><i class="fa-solid fa-cloud-sun"></i></div>
+488: <div class="weather-card-title"><i class="fa-solid fa-location-dot"></i> Floriano / C. do Buriti (PI)</div>
+491: <span class="weather-provider prov-inmet"><i class="fa-solid fa-temperature-half"></i> INMET (A365)</span>
+495: <span class="weather-provider prov-clima"><i class="fa-solid fa-cloud"></i> Climatempo</span>
+499: <span class="weather-provider prov-info"><i class="fa-solid fa-umbrella"></i> InfoMeteo</span>
+507: <div class="weather-card-title"><i class="fa-solid fa-location-dot"></i> Ouro Branco</div>
+510: <span class="weather-provider prov-inmet"><i class="fa-solid fa-temperature-half"></i> INMET (A513)</span>
+514: <span class="weather-provider prov-clima"><i class="fa-solid fa-cloud"></i> Climatempo</span>
+518: <span class="weather-provider prov-info"><i class="fa-solid fa-umbrella"></i> InfoMeteo</span>
+526: <div class="weather-card-title"><i class="fa-solid fa-location-dot"></i> Mossoró (RN)</div>
+529: <span class="weather-provider prov-inmet"><i class="fa-solid fa-temperature-half"></i> INMET (A318)</span>
+533: <span class="weather-provider prov-clima"><i class="fa-solid fa-cloud"></i> Climatempo</span>
+537: <span class="weather-provider prov-info"><i class="fa-solid fa-umbrella"></i> InfoMeteo</span>
+550: <span>Distribuição por Faixa de FRP</span>
+557: <span>Focos por </span>
+568: <span>Relatórios por Propriedade</span>
+574: <span>Evolução Temporal</span>
+588: <button class="map-floating-btn" onclick="centralizarTodasAOIs()"><i class="fa-solid fa-expand"></i> CENTRALIZAR MAPA</button>
+596: <div class="legend-title"><span><i class="fa-solid fa-layer-group"></i> Potência FRP (MW)</span></div>
+598: <div class="legend-labels"><span>&lt; 5 MW</span><span>10 (Alerta)</span><span>25</span><span>&gt; 50</span></div>
+603: <div id="coords-display">Lat: 0.0000 | Lon: 0.0000 | Zoom: 0</div>
+619: <button class="modal-close" onclick="fecharModal()">&times;</button>
+627: <button class="btn-header" onclick="fecharModal()">Fechar</button>
+629: <button class="btn-header btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir / PDF</button>
+791: layer.bindTooltip(`<b>BUFFER</b><br><small>Raio de amortecimento / entorno</small>`, { sticky: true });
+793: layer.bindTooltip(`<b>${nome}</b><br><small>${p.Municipio || p.source_layer || '-'} ${area ? ' | ' + area : ''}</small>`, { sticky: true });
+796: let popupHtml = `<div class="popup-header"><span><i class="fa-solid fa-map"></i> ${nome}</span></div>`;
+812: popupHtml += `<div><b>Código:</b> ${r.codigo} | <b>Data:</b> ${dtFormatada}</div>`;
+1189: <div class="popup-row"><strong>Localização:</strong> <span>${badgeLocal}</span></div>
+1191: ${aoiMun ? `<div class="popup-row"><strong>Município:</strong> <span>${aoiMun}</span></div>` : ''}
+1192: <div class="popup-row"><strong>Data/Hora:</strong> <span>${f.acq_date} ${f.acq_time.toString().padStart(4, '0').replace(/(\d{2})(\d{2})/, '$1:$2')} UTC</span></div>
+1193: <div class="popup-row"><strong>Coordenadas:</strong> <span>${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</span></div>
+1228: if (!isNaN(hour) && hour >= 0 && hour < 24) {
+1316: } else if (score >= 4 && score <= 6) {
+1320: } else if (score >= 7 && score <= 11) {
+1324: } else if (score >= 12 && score <= 19) {
+1482: if (label === '0-5') targetFocos = intersectedFocos.filter(f => f.frp < 5);
+1483: else if (label === '5-10') targetFocos = intersectedFocos.filter(f => f.frp >= 5 && f.frp < 10);
+1484: else if (label === '10-25') targetFocos = intersectedFocos.filter(f => f.frp >= 10 && f.frp < 25);
+1485: else if (label === '25-50') targetFocos = intersectedFocos.filter(f => f.frp >= 25 && f.frp < 50);
+1704: <option value="7d" ${periodo === '7d' ? 'selected' : ''}>Últimos 7 Dias</option>
+1705: <option value="24h" ${periodo === '24h' ? 'selected' : ''}>Últimas 24 Horas</option>
