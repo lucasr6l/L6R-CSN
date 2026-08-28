@@ -79,6 +79,14 @@
       "classificacao": "Atenção"
     }
   ],
+  "UICA (IRACI)": [
+    {
+      "codigo": "A234.3",
+      "data": "2026-08-03 00:00:00",
+      "focos": 3.0,
+      "classificacao": "Crítico"
+    }
+  ],
   "UMBAÚBA": [
     {
       "codigo": "A234.3",
@@ -91,14 +99,6 @@
       "data": "2026-08-05 00:00:00",
       "focos": 2.0,
       "classificacao": "Atenção"
-    }
-  ],
-  "UICA (IRACI)": [
-    {
-      "codigo": "A234.3",
-      "data": "2026-08-03 00:00:00",
-      "focos": 3.0,
-      "classificacao": "Crítico"
     }
   ],
   "MALHADA GRANDE (FRRC-PAPAGAIO)": [
@@ -223,6 +223,26 @@
       "classificacao": "Atenção"
     }
   ],
+  "ONÇA": [
+    {
+      "codigo": "A234.15",
+      "data": "2026-08-17 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.16",
+      "data": "2026-08-18 00:00:00",
+      "focos": 7.0,
+      "classificacao": "Atenção"
+    },
+    {
+      "codigo": "A234.21",
+      "data": "2026-08-23 00:00:00",
+      "focos": 11.0,
+      "classificacao": "Atenção"
+    }
+  ],
   "CAJUEIRO": [
     {
       "codigo": "A234.15",
@@ -248,26 +268,6 @@
       "codigo": "A234.17",
       "data": "2026-08-19 00:00:00",
       "focos": 1.0,
-      "classificacao": "Atenção"
-    }
-  ],
-  "ONÇA": [
-    {
-      "codigo": "A234.15",
-      "data": "2026-08-17 00:00:00",
-      "focos": 11.0,
-      "classificacao": "Atenção"
-    },
-    {
-      "codigo": "A234.16",
-      "data": "2026-08-18 00:00:00",
-      "focos": 7.0,
-      "classificacao": "Atenção"
-    },
-    {
-      "codigo": "A234.21",
-      "data": "2026-08-23 00:00:00",
-      "focos": 11.0,
       "classificacao": "Atenção"
     }
   ],

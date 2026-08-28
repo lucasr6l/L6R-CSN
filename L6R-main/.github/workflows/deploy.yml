@@ -1,0 +1,24 @@
+name: Deploy to HostGator
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  web-deploy:
+    name: Deploy Files via FTP
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+    
+    - name: Upload to HostGator
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        # Mude o server-dir abaixo caso seus arquivos precisem ir para public_html/ ou public_html/geoportal/
+        server-dir: ${{ secrets.FTP_DIR || './' }}
