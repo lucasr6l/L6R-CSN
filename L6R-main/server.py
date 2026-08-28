@@ -53,6 +53,8 @@ def get_status():
     }
 
 @app.get("/api/focos/7d_csv")
+@app.get("/geoportal/api/focos/7d_csv")
+@app.get("/api-geoportal/api/focos/7d_csv")
 def proxy_nasa_7d_csv():
     """
     Proxy simples para contornar o bloqueio de CORS no arquivo CSV estático de 7 dias da NASA.

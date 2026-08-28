@@ -1,8 +1,19 @@
 import sys
 import os
 
+sys.path.insert(0, os.path.dirname(__file__))
+
+from server import app as fastapi_app
+from a2wsgi import ASGIMiddleware
+
+# Adaptador que garante que o SCRIPT_NAME seja tratado corretamente pela HostGator
 def application(environ, start_response):
-    start_response('200 OK', [('Content-Type', 'text/plain; charset=utf-8')])
-    message = 'PASSENGER ESTA FUNCIONANDO PERFEITAMENTE!\n'
-    version = 'Versão do Python: %s\n' % sys.version.split()[0]
-    return [(message + version).encode('utf-8')]
+    path_info = environ.get('PATH_INFO', '')
+    
+    # Se a HostGator enviar a rota completa com /api-geoportal, nós removemos para o FastAPI entender
+    if path_info.startswith('/api-geoportal'):
+        environ['PATH_INFO'] = path_info[len('/api-geoportal'):]
+        environ['SCRIPT_NAME'] = '/api-geoportal'
+        
+    wsgi_app = ASGIMiddleware(fastapi_app)
+    return wsgi_app(environ, start_response)

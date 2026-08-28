@@ -1074,8 +1074,8 @@
                 const timeoutId = setTimeout(() => controller.abort(), 60000);
 
                 // Utilizando a base estática de 7 dias da NASA LANCE (NOAA-21 / J2) para a América do Sul
-                // A requisição é feita via backend local (./api/focos/7d_csv) para evitar bloqueios de CORS.
-                const url = `./api/focos/7d_csv`;
+                // A requisição é feita via backend local (/api-geoportal/api/focos/7d_csv) para evitar bloqueios de CORS.
+                const url = '/api-geoportal/api/focos/7d_csv';
 
                 const resp = await fetch(url, { signal: controller.signal });
                 clearTimeout(timeoutId);

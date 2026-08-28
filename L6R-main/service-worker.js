@@ -30,7 +30,7 @@ self.addEventListener('activate', (event) => {
         })
       );
     })
-    .then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
@@ -48,7 +48,7 @@ self.addEventListener('fetch', (event) => {
         }).catch((err) => {
           console.log('Offline: Falha ao buscar recurso na rede.', err);
         });
-        
+
         // Retorna a resposta em cache imediatamente se existir, caso contrário, espera a rede
         return cachedResponse || fetchPromise;
       });
