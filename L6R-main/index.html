@@ -346,7 +346,15 @@
                 font-size: 11px;
             }
             .clock-container {
-                display: none !important;
+                display: flex !important;
+                width: 100%;
+                justify-content: space-around;
+                margin-top: 5px;
+                padding: 5px 10px;
+                border-top: 1px solid rgba(255,255,255,0.1);
+            }
+            .clock-item {
+                align-items: center;
             }
             .header-actions {
                 width: 100%;
@@ -418,7 +426,14 @@
                 grid-template-columns: 1fr; /* 1 coluna pros KPIs */
             }
             .legend-card {
-                display: none !important; /* Esconder a legenda no celular para não cobrir o mapa */
+                display: flex !important;
+                bottom: 60px !important;
+                left: 10px !important;
+                right: 10px !important;
+                width: calc(100% - 20px) !important;
+                max-width: none !important;
+                padding: 6px 10px !important;
+                z-index: 1000 !important;
             }
             .map-floating-panel {
                 bottom: auto;
