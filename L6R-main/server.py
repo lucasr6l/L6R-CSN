@@ -137,7 +137,8 @@ def get_current_user(request: Request):
 @app.get("/")
 def serve_root(request: Request):
     if not get_current_user(request):
-        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+        url = request.url_for("serve_login")
+        return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
         
     index_path = BASE_DIR / "index.html"
     if index_path.exists():
