@@ -1,1987 +1,988 @@
 <!DOCTYPE html>
 
-
-
 <html lang="pt-BR">
-
-
 
 <head>
 
-
-
     <meta charset="UTF-8">
-
-
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-
-
     <title>GEOPORTAL CSN | Monitoramento de Queimadas - NOAA-21</title>
 
-
-
     <meta name="theme-color" content="#030712">
-
     <meta name="apple-mobile-web-app-capable" content="yes">
-
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
     <script>
-
         // Corrige o aviso do Leaflet.heat sobre readback frequente em animações Canvas2D
-
         const originalGetContext = HTMLCanvasElement.prototype.getContext;
-
         HTMLCanvasElement.prototype.getContext = function(type, options) {
-
             if (type === '2d') {
-
                 options = Object.assign({}, options, { willReadFrequently: true });
-
             }
-
             return originalGetContext.call(this, type, options);
-
         };
-
         if ('serviceWorker' in navigator) {
-
             window.addEventListener('load', () => {
-
                 navigator.serviceWorker.register('service-worker.js')
-
                     .then(registration => {
-
                         console.log('Service Worker registrado com sucesso:', registration.scope);
-
                     })
-
                     .catch(err => {
-
                         console.log('Falha ao registrar o Service Worker:', err);
-
                     });
-
             });
-
         }
-
-    
-        function doLogout() {
-            // Remove token cookie
-            document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            window.location.href = '/login';
-        }
-
-
-        document.addEventListener("DOMContentLoaded", () => {
-            // Auto-refresh a cada 5 minutos (300.000 ms)
-            setInterval(() => {
-                console.log("Auto-refresh: buscando novos focos...");
-                if (typeof atualizarFocosBackendProxy === "function") {
-                    atualizarFocosBackendProxy();
-                }
-            }, 300000);
-        });
-
     </script>
-
-
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-
-
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-
-
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-
-
 
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
-
-
     <style>
 
-
-
         :root {
-
             --bg-dark: #0a0a0a;
-
             --bg-sidebar: rgba(15, 15, 15, 0.65);
-
             --bg-card: rgba(25, 25, 25, 0.6);
-
             --bg-card-hover: rgba(40, 40, 40, 0.8);
-
             --border-color: rgba(212, 175, 55, 0.25);
-
             --border-glow: 0 0 10px rgba(212, 175, 55, 0.05);
-
             --accent-green: #00ffcc;
-
             --accent-cyan: #00d4ff; 
-
             --accent-orange: #ff9d00; 
-
             --accent-red: #ff3366; 
-
             --accent-purple: #b026ff;
-
             --accent-gold: #d4af37;
-
             --text-main: #f0f0f0; 
-
             --text-muted: #a0a0a0; 
-
             --sidebar-width: 440px;
-
         }
-
-
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-
-
         html, body { width: 100%; height: 100%; margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; overflow: hidden; background-image: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 100%); }
-
-
 
         header { height: 70px; min-height: 70px; background-color: rgba(10, 10, 10, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 18px; z-index: 1001; box-shadow: var(--border-glow); }
 
-
-
         .brand { display: flex; align-items: center; gap: 12px; }
-
         .brand-logo { display: flex; align-items: center; gap: 10px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); }
-
         .brand-title { font-size: 16px; font-weight: 300; letter-spacing: 1px; color: var(--text-main); text-transform: uppercase; }
-
         .brand-subtitle { font-size: 10px; color: var(--accent-gold); font-weight: 400; letter-spacing: 2px; text-transform: uppercase; opacity: 0.9; }
-
-
 
         .clock-container { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(5px); border: 1px solid var(--border-color); padding: 5px 16px; border-radius: 4px; display: flex; align-items: center; gap: 16px; font-family: 'JetBrains Mono', monospace; box-shadow: inset 0 0 10px rgba(212,175,55,0.05); }
 
-
-
         .clock-item { display: flex; flex-direction: column; align-items: flex-start; }
-
         .clock-label { font-size: 8px; text-transform: uppercase; color: var(--accent-gold); display: flex; align-items: center; gap: 4px; letter-spacing: 1px; }
-
         .clock-time { font-size: 14px; font-weight: 300; color: var(--text-main); }
-
         .clock-time.brasilia { color: var(--accent-cyan); }
-
         .clock-date { font-size: 9px; color: var(--text-muted); letter-spacing: 1px; }
-
         .clock-divider { width: 1px; height: 24px; background: var(--border-color); }
 
-
-
         .header-actions { display: flex; align-items: center; gap: 10px; }
-
         .btn-header { background: rgba(20,20,20,0.6); backdrop-filter: blur(5px); border: 1px solid var(--border-color); color: var(--accent-gold); padding: 8px 16px; border-radius: 4px; font-size: 11px; font-weight: 400; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease; box-shadow: var(--border-glow); }
-
         .btn-header:hover { background: rgba(212,175,55,0.1); border-color: var(--accent-gold); color: #fff; box-shadow: 0 0 15px rgba(212,175,55,0.3); }
-
         .btn-header:disabled { opacity: 0.5; cursor: not-allowed; }
-
         .btn-primary { background: transparent; border: 1px solid var(--accent-cyan); color: var(--accent-cyan); }
-
         .btn-primary:hover { background: rgba(0,212,255,0.1); border-color: var(--accent-cyan); color: #fff; box-shadow: 0 0 15px rgba(0,212,255,0.3); }
-
-
 
         .app-body { display: flex; flex: 1; width: 100%; height: calc(100vh - 70px); position: relative; overflow: hidden; }
 
-
-
         #icon-bar { width: 60px; min-width: 60px; background: rgba(5,5,5,0.8); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 1001; }
-
         #sidebar { width: calc(var(--sidebar-width) - 60px); min-width: calc(var(--sidebar-width) - 60px); background: var(--bg-sidebar); backdrop-filter: blur(15px); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 1000; height: 100%; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
 
-
-
         .sidebar-tabs { display: flex; flex-direction: column; width: 100%; margin-top: 10px; }
-
         .sidebar-tab { padding: 20px 0; text-align: center; font-size: 0; color: var(--text-muted); cursor: pointer; border-left: 3px solid transparent; transition: all 0.3s; position: relative; }
-
         .sidebar-tab.active { color: var(--accent-cyan); border-left-color: var(--accent-cyan); background: rgba(0,212,255,0.05); }
-
         .sidebar-tab i { display: block; font-size: 18px; font-weight: 900; transition: transform 0.3s ease; }
-
         .sidebar-tab:hover i { transform: scale(1.1); color: var(--accent-cyan); }
-
         .sidebar-tab::after { content: attr(title); position: absolute; left: 100%; top: 50%; transform: translateY(-50%); background: var(--bg-card); padding: 4px 8px; border-radius: 4px; font-size: 10px; color: var(--text-main); white-space: nowrap; opacity: 0; pointer-events: none; transition: 0.2s; border: 1px solid var(--border-color); z-index: 1002; }
-
         .sidebar-tab:hover::after { opacity: 1; left: calc(100% + 10px); }
 
-
-
         .tab-content { flex: 1; overflow-y: auto; padding: 20px; display: none; }
-
         .tab-content.active { display: block; }
 
-
-
         .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
-
         .kpi-card { background: var(--bg-card); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 4px; padding: 12px 14px; position: relative; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-
         .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(212,175,55,0.15); }
-
         .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent-gold); box-shadow: 0 0 8px var(--accent-gold); }
-
         .kpi-card.red::before { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
-
         .kpi-card.orange::before { background: var(--accent-orange); box-shadow: 0 0 8px var(--accent-orange); }
-
         .kpi-card.purple::before { background: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple); }
 
-
-
         .kpi-title { font-size: 9px; text-transform: uppercase; color: var(--text-muted); font-weight: 400; letter-spacing: 1px; }
-
         .kpi-value { font-size: 24px; font-weight: 300; color: var(--text-main); margin-top: 4px; font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
-
         .kpi-sub { font-size: 9px; color: var(--text-muted); opacity: 0.7; }
 
-
-
         .alert-box { background: rgba(255, 51, 102, 0.05); backdrop-filter: blur(5px); border: 1px solid rgba(255, 51, 102, 0.3); border-radius: 4px; padding: 12px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; box-shadow: inset 0 0 20px rgba(255, 51, 102, 0.05), 0 0 15px rgba(255, 51, 102, 0.1); }
-
         .alert-box i { color: var(--accent-red); font-size: 18px; margin-top: 2px; text-shadow: 0 0 10px var(--accent-red); }
-
         .alert-box-title { font-size: 11px; font-weight: 600; color: #ff809f; letter-spacing: 1px; text-transform: uppercase; }
-
         .alert-box-desc { font-size: 11px; color: #e2e8f0; margin-top: 4px; font-weight: 300; }
-
-
 
         .section-title { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin: 14px 0 8px 0; display: flex; align-items: center; justify-content: space-between; }
 
-
-
         .form-group { margin-bottom: 12px; }
-
-
 
         .form-group label { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
 
-
-
         .form-control { width: 100%; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 10px; border-radius: 6px; font-size: 12px; font-family: inherit; }
-
-
 
         .form-control:focus { outline: none; border-color: var(--accent-cyan); }
 
-
-
         .range-container { display: flex; align-items: center; gap: 10px; }
-
-
 
         .range-container input[type="range"] { flex: 1; accent-color: var(--accent-orange); }
 
-
-
         .range-value { font-weight: 600; font-size: 12px; color: var(--accent-orange); min-width: 45px; text-align: right; }
-
-
 
         .aoi-list { max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card); }
 
-
-
         .aoi-item { padding: 8px 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-
-
 
         .aoi-item:last-child { border-bottom: none; }
 
-
-
         .aoi-item:hover { background: var(--bg-card-hover); }
-
-
 
         .aoi-item.has-fire { border-left: 4px solid var(--accent-red); background: rgba(239, 68, 68, 0.05); }
 
-
-
         .aoi-name { font-size: 11px; font-weight: 600; }
-
-
 
         .aoi-subtext { font-size: 10px; color: var(--text-muted); }
 
-
-
         .badge-fire-count { background: var(--accent-red); color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
-
-
 
         #map-container { flex: 1; position: relative; width: 100%; height: 100%; background: #111; }
 
-
-
         #map { width: 100%; height: 100%; position: absolute; top: 0; bottom: 0; left: 0; right: 0; background: #000; }
-
-
 
         .map-floating-panel { position: absolute; bottom: 120px; left: 15px; right: auto; top: auto; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
 
-
-
         .map-floating-btn { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-
-
 
         .legend-card { position: absolute; bottom: 35px; left: 15px; right: auto; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; z-index: 1000; font-size: 11px; min-width: 210px; }
 
-
-
         .legend-title { font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
-
-
 
         .legend-bar { height: 8px; border-radius: 4px; background: linear-gradient(to right, #facc15, #f97316, #ef4444, #a855f7); margin-bottom: 4px; }
 
-
-
         .legend-labels { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 9px; }
-
-
 
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.75); display: none; align-items: center; justify-content: center; z-index: 2000; }
 
-
-
         .modal-card { background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 12px; width: 90%; max-width: 680px; max-height: 85vh; overflow-y: auto; padding: 20px; }
-
-
 
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px; }
 
-
-
         .modal-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
 
-
-
         .leaflet-popup-content-wrapper { background: #1e293b !important; color: #f8fafc !important; border: 1px solid #475569; border-radius: 8px !important; }
-
         .leaflet-popup-content { max-height: 35vh; overflow-y: auto; padding-right: 5px; }
-
         /* Custom scrollbar para o popup */
-
         .leaflet-popup-content::-webkit-scrollbar { width: 6px; }
-
         .leaflet-popup-content::-webkit-scrollbar-track { background: transparent; }
-
         .leaflet-popup-content::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-
-
 
         .leaflet-popup-tip { background: #1e293b !important; }
 
-
-
         .popup-header { font-size: 12px; font-weight: 700; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; }
-
-
 
         .popup-row { font-size: 11px; display: flex; justify-content: space-between; margin-bottom: 3px; color: #cbd5e1; }
 
-
-
         .popup-row strong { color: #94a3b8; }
 
-
-
         .leaflet-control-layers {
-
             background: rgba(15, 23, 42, 0.4) !important;
-
             backdrop-filter: blur(12px) !important;
-
             -webkit-backdrop-filter: blur(12px) !important;
-
             border: 1px solid rgba(255, 255, 255, 0.15) !important;
-
             border-radius: 12px !important;
-
             padding: 12px 16px !important;
-
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
-
             color: #f8fafc !important;
-
         }
-
         .leaflet-control-layers-separator { border-top: 1px solid rgba(255, 255, 255, 0.15) !important; margin: 10px 0 !important; }
-
         .leaflet-control-layers-base label, .leaflet-control-layers-overlays label {
-
             display: flex !important; align-items: center !important; gap: 8px !important;
-
             font-size: 12px !important; margin-bottom: 4px !important; cursor: pointer !important;
-
             padding: 6px 10px !important; border-radius: 6px !important; transition: all 0.2s ease !important;
-
         }
-
         .leaflet-control-layers-base label:hover, .leaflet-control-layers-overlays label:hover {
-
             background: rgba(255, 255, 255, 0.1) !important;
-
         }
-
         .leaflet-control-layers input[type="radio"], .leaflet-control-layers input[type="checkbox"] {
-
             appearance: none !important; -webkit-appearance: none !important;
-
             width: 14px !important; height: 14px !important; min-width: 14px !important;
-
             border: 1px solid rgba(255, 255, 255, 0.4) !important;
-
             background: rgba(0, 0, 0, 0.2) !important;
-
             border-radius: 3px !important;
-
             position: relative !important; cursor: pointer !important; margin: 0 !important;
-
             transition: all 0.2s ease !important;
-
         }
-
         .leaflet-control-layers input[type="radio"] { border-radius: 50% !important; }
-
         .leaflet-control-layers input[type="radio"]:checked, .leaflet-control-layers input[type="checkbox"]:checked {
-
             background: #3b82f6 !important; border-color: #60a5fa !important;
-
             box-shadow: 0 0 8px rgba(59, 130, 246, 0.8) !important;
-
         }
-
         .leaflet-control-layers input[type="checkbox"]:checked::after {
-
             content: '' !important; position: absolute !important; top: 1px !important; left: 4px !important;
-
             width: 3px !important; height: 6px !important; border: solid white !important;
-
             border-width: 0 2px 2px 0 !important; transform: rotate(45deg) !important;
-
         }
-
         .leaflet-control-layers input[type="radio"]:checked::after {
-
             content: '' !important; position: absolute !important; top: 3px !important; left: 3px !important;
-
             width: 6px !important; height: 6px !important; background: white !important; border-radius: 50% !important;
-
         }
-
-
 
         @media print {
-
             body * { visibility: hidden; }
-
             #modal-relatorio, #modal-relatorio * { visibility: visible; }
-
             #modal-relatorio { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 20px; display: block !important; }
-
             .modal-card { width: 100%; max-width: none; max-height: none; border: none; overflow: visible; }
-
             .modal-close, .btn-header { display: none !important; }
-
             @page { margin: 0; }
-
             #print-time-stamp { display: inline !important; }
-
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
         }
-
-
 
         .timeline-player {
-
             background: var(--bg-panel);
-
             border: 1px solid rgba(255,255,255,0.15);
-
             border-radius: 12px;
-
             padding: 10px;
-
             display: flex;
-
             flex-direction: column;
-
             align-items: center;
-
             gap: 10px;
-
             margin-top: 15px;
-
             width: 100%;
-
         }
-
         #btn-timeline-play {
-
             background: var(--accent-orange);
-
             color: white;
-
             border: none;
-
             border-radius: 50%;
-
             width: 32px;
-
             height: 32px;
-
             display: flex;
-
             align-items: center;
-
             justify-content: center;
-
             cursor: pointer;
-
             font-size: 14px;
-
             flex-shrink: 0;
-
             transition: 0.2s;
-
         }
-
         #btn-timeline-play:hover {
-
             transform: scale(1.1);
-
             background: #f97316;
-
         }
-
         @keyframes pulse-play {
-
             0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
-
             70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
-
             100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
-
         }
-
         .timeline-playing #btn-timeline-play {
-
             animation: pulse-play 1.5s infinite;
-
         }
-
         .timeline-slider-wrapper {
-
             width: 100%;
-
             display: flex;
-
             align-items: center;
-
             gap: 10px;
-
         }
-
         #timeline-slider {
-
             flex: 1;
-
             accent-color: var(--accent-orange);
-
             cursor: pointer;
-
         }
-
         .timeline-label {
-
             font-size: 9px;
-
             color: var(--text-muted);
-
             white-space: nowrap;
-
         }
-
         .timeline-current {
-
             font-size: 11px;
-
             font-weight: 700;
-
             color: #fff;
-
             white-space: nowrap;
-
             text-align: center;
-
         }
-
-
 
         /* MOBILE RESPONSIVENESS */
-
         @media (max-width: 768px) {
-
             /* Estado Padrão Mobile: Mostra Mapa, Esconde Sidebar */
-
             #sidebar { display: none !important; }
-
             #map-container { display: flex !important; height: 100%; }
 
-
-
             /* Quando o painel está ativo */
-
             body.mobile-show-sidebar #map-container { display: none !important; }
-
             body.mobile-show-sidebar #sidebar { display: flex !important; height: 100%; border-top: none; min-height: 0; }
-
             
-
             /* Quando o mapa está ativo */
-
             body.mobile-show-map #sidebar { display: none !important; }
-
             body.mobile-show-map #map-container { display: flex !important; height: 100%; }
 
-
-
             header {
-
                 height: auto;
-
                 min-height: 60px;
-
                 padding: 10px 15px;
-
                 flex-wrap: wrap;
-
                 gap: 10px;
-
                 justify-content: space-between;
-
             }
-
             .brand-logo img {
-
                 height: 32px !important;
-
             }
-
             .brand-title {
-
                 font-size: 11px;
-
             }
-
             .clock-container {
-
                 display: none !important;
-
             }
-
             .header-actions {
-
                 width: 100%;
-
                 justify-content: space-between;
-
                 margin-top: 5px;
-
                 padding-top: 10px;
-
                 border-top: 1px solid rgba(255,255,255,0.1);
-
             }
-
             .btn-header {
-
                 padding: 8px;
-
                 font-size: 10px;
-
                 flex: 1;
-
                 justify-content: center;
-
             }
-
             .app-body {
-
                 flex-direction: column;
-
                 height: calc(100vh - 100px);
-
             }
-
             #map-container {
-
                 width: 100%;
-
                 height: 100%; /* Agora ocupa 100% da área quando ativo */
-
                 flex: 1;
-
                 order: 1;
-
             }
-
             #sidebar {
-
                 width: 100%;
-
                 min-width: 100%;
-
                 flex: 1; 
-
                 min-height: 0;
-
                 order: 2;
-
                 border-right: none;
-
                 border-top: none;
-
             }
-
             #icon-bar {
-
                 width: 100%;
-
                 min-width: 100%;
-
                 height: 60px;
-
                 min-height: 60px;
-
                 flex-direction: row;
-
                 border-right: none;
-
                 border-top: 1px solid var(--border-color);
-
                 order: 3; /* Barra de navegação na base da tela */
-
                 background: rgba(10, 10, 10, 1);
-
             }
-
             .sidebar-tabs {
-
                 flex-direction: row;
-
                 margin-top: 0;
-
                 width: 100%;
-
                 justify-content: space-around;
-
             }
-
             .sidebar-tab {
-
                 width: 100%;
-
                 padding: 0;
-
                 display: flex;
-
                 align-items: center;
-
                 justify-content: center;
-
                 border-left: none;
-
                 border-bottom: 3px solid transparent;
-
             }
-
             .sidebar-tab.active {
-
                 border-left: none;
-
                 border-bottom-color: var(--accent-cyan);
-
                 background: rgba(0,212,255,0.05);
-
             }
-
             .sidebar-tab::after {
-
                 display: none !important; /* Esconder tooltip */
-
             }
-
             .kpi-grid {
-
                 grid-template-columns: 1fr; /* 1 coluna pros KPIs */
-
             }
-
             .legend-card {
-
                 display: none !important; /* Esconder a legenda no celular para não cobrir o mapa */
-
             }
-
             .map-floating-panel {
-
                 bottom: auto;
-
                 top: 10px;
-
                 left: auto;
-
                 right: 10px;
-
             }
-
             .leaflet-control-layers {
-
                 display: none !important; /* Esconder controle original */
-
             }
-
             .modal-card {
-
                 width: 95%;
-
                 padding: 15px;
-
             }
-
             .d-mobile-only { display: flex !important; }
-
             
-
             .mobile-layer-controls {
-
                 display: flex;
-
                 position: absolute;
-
                 bottom: 10px;
-
                 left: 10px;
-
                 right: 10px;
-
                 z-index: 1000;
-
                 overflow-x: auto;
-
                 gap: 8px;
-
                 padding-bottom: 5px;
-
             }
-
             .layer-chip {
-
                 background: rgba(15, 23, 42, 0.9);
-
                 backdrop-filter: blur(8px);
-
                 border: 1px solid var(--border-color);
-
                 color: var(--text-muted);
-
                 padding: 8px 12px;
-
                 border-radius: 20px;
-
                 font-size: 11px;
-
                 white-space: nowrap;
-
                 cursor: pointer;
-
             }
-
             .layer-chip.active {
-
                 color: #fff;
-
                 background: var(--accent-cyan);
-
                 border-color: #fff;
-
             }
-
             /* Evitar sobreposição da escala e zoom com os chips */
-
             .leaflet-bottom {
-
                 bottom: 80px !important; /* Empurra mais pra cima pra não sobrepor de jeito nenhum */
-
             }
-
             /* Separar e estilizar os botões de zoom + e - */
-
             .leaflet-control-zoom {
-
                 border: none !important;
-
                 background: transparent !important;
-
                 box-shadow: none !important;
-
             }
-
             .leaflet-control-zoom a {
-
                 background-color: rgba(15, 23, 42, 0.9) !important;
-
                 color: white !important;
-
                 border: 1px solid var(--border-color) !important;
-
                 border-radius: 8px !important;
-
                 margin-bottom: 10px !important; /* Separa os botões */
-
                 display: flex !important;
-
                 align-items: center;
-
                 justify-content: center;
-
             }
-
             /* Diminuir agressivamente o popup no celular */
-
             .leaflet-popup-content {
-
                 max-height: 20vh !important;
-
                 margin: 10px 15px 10px 10px !important;
-
                 font-size: 10px !important;
-
             }
-
         }
-
         
-
         .d-mobile-only { display: none; }
-
     </style>
-
-
 
 </head>
 
-
-
 ﻿<body>
-
     <div id="update-notification" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:10px 20px; border-radius:8px; z-index:9999; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.5);"><i class="fa-solid fa-arrows-rotate fa-spin"></i> Novos relatórios detectados. Atualizando...</div>
-
-
 
     <header>
 
-
-
         <div class="brand">
 
-
-
             <div class="brand-logo">
-
                 <img src="public/l6r-logo.png" alt="L6R" style="height: 48px; width: auto; mix-blend-mode: screen;">
-
                 <img src="public/csn-logo.jpg" alt="CSN" style="height: 48px; width: auto; mix-blend-mode: screen;">
-
             </div>
-
-
 
             <div>
 
-
-
                 <div class="brand-title">DASHBOARD CSN • FOCOS DE CALOR</div>
-
-
 
                 <div class="brand-subtitle"><i class="fa-solid fa-satellite"></i> VIIRS NOAA-21 (375m) • 24h</div>
 
-
-
             </div>
 
-
-
         </div>
-
-
 
         <div class="clock-container">
 
-
-
             <div class="clock-item">
-
-
 
                 <div class="clock-label"><i class="fa-solid fa-location-dot"></i> Horário de Brasília (UTC-3)</div>
 
-
-
                 <div class="clock-time brasilia" id="clock-brt">--:--:-- BRT</div>
-
-
 
                 <div class="clock-date" id="date-brt">--/--/----</div>
 
-
-
             </div>
-
-
 
             <div class="clock-divider"></div>
 
-
-
             <div class="clock-item">
-
-
 
                 <div class="clock-label"><i class="fa-solid fa-globe"></i> Tempo Universal (UTC/GMT)</div>
 
-
-
                 <div class="clock-time" id="clock-utc">--:--:-- UTC</div>
-
-
 
                 <div class="clock-date" id="date-utc">--/--/----</div>
 
-
-
             </div>
 
-
-
         </div>
-
-
 
         <div class="header-actions">
 
-
-
             
-
-
 
             <button class="btn-header btn-primary" id="btn-atualizar-focos" style="background-color: #ef4444; color: white;" onclick="atualizarFocosBackendProxy()"><i class="fa-solid fa-rotate"></i> Atualizar Focos (Proxy)</button>
 
-
-
             <button class="btn-header" onclick="abrirRelatorio()"><i class="fa-solid fa-file-pdf"></i> Relatório</button>
-            <button class="btn-header" onclick="doLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
-
-
 
         </div>
-
-
 
     </header>
 
-
-
     <div class="app-body">
 
-
-
         <div id="icon-bar">
-
             <div class="sidebar-tabs">
-
                 <div class="sidebar-tab d-mobile-only" onclick="switchTab('tab-mapa', this)" title="Mapa"><i class="fa-solid fa-map-location-dot"></i></div>
-
                 <div class="sidebar-tab active" onclick="switchTab('tab-dash', this)" title="Painel Operacional"><i class="fa-solid fa-layer-group"></i></div>
-
                 <div class="sidebar-tab" onclick="switchTab('tab-filtros', this)" title="Filtros"><i class="fa-solid fa-filter"></i></div>
-
                 <div class="sidebar-tab" onclick="switchTab('tab-aoi', this)" title="Propriedades"><i class="fa-solid fa-draw-polygon"></i></div>
-
                 <div class="sidebar-tab" onclick="switchTab('tab-clima', this)" title="Dados Climáticos"><i class="fa-solid fa-cloud-sun-rain"></i></div>
-
                 <div class="sidebar-tab" onclick="switchTab('tab-graficos', this)" title="Estatísticas"><i class="fa-solid fa-chart-line"></i></div>
-
             </div>
-
         </div>
-
-
 
         <div id="sidebar">
 
-
-
             <div id="tab-dash" class="tab-content active">
-
-
 
                 <div id="critical-alert-box" class="alert-box" style="display: none;">
 
-
-
                     <i class="fa-solid fa-triangle-exclamation"></i>
-
-
 
                     <div>
 
-
-
                         <div class="alert-box-title">ALERTA CRÍTICO DE INCÊNDIO</div>
-
-
 
                         <div class="alert-box-desc" id="alert-box-text">Detectados focos com FRP > 10 MW nas fazendas!</div>
 
-
-
                     </div>
 
-
-
                 </div>
-
-
 
                 <div class="kpi-grid">
-
                     <div class="kpi-card red">
-
                         <div class="kpi-title">Focos nas Propriedades</div>
-
                         <div style="display: flex; gap: 10px; align-items: flex-end;">
-
                             <div class="kpi-value" id="kpi-focos-aoi">0</div>
-
                             <div class="kpi-sub" style="margin-bottom: 5px;">nas últimas 24h</div>
-
                         </div>
-
                     </div>
-
                     <div class="kpi-card gold">
-
                         <div class="kpi-title">Maior FRP nas Propriedades</div>
-
                         <div class="kpi-value" id="kpi-max-frp-aoi" style="margin-bottom: 5px;">0.0 <span style="font-size:10px;">MW</span></div>
-
                         <div class="kpi-sub">nas últimas 24h</div>
-
                     </div>
-
                     <div class="kpi-card purple">
-
                         <div class="kpi-title">Fazendas Atingidas</div>
-
                         <div class="kpi-value" id="kpi-aoi-atingidas">0</div>
-
                         <div class="kpi-sub">De 100 cadastradas</div>
-
                         <div style="margin-top:10px; font-size:10px; color:var(--accent-gold); display:flex; justify-content:space-between; cursor:pointer;">
-
                             Listar <i class="fa-solid fa-chevron-right"></i>
-
                         </div>
-
                     </div>
-
                     <div class="kpi-card red">
-
                         <div class="kpi-title" style="text-align:center;">Status de Risco</div>
-
                         <div style="position:relative; width:120px; height:65px; margin: 10px auto 0 auto;">
-
                             <!-- Chart.js half-doughnut -->
-
                             <canvas id="chartRiscoGauge"></canvas>
-
                             <!-- Needle Base Dot -->
-
                             <div style="position:absolute; bottom:4px; left:50%; transform:translateX(-50%); width:12px; height:12px; background:white; border-radius:50%; z-index:11; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>
-
                             <!-- Needle -->
-
                             <div id="gauge-needle" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:3px; height:45px; background:white; transform-origin:bottom center; rotate:0deg; transition: rotate 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); border-radius:3px; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>
-
                         </div>
-
                         <div class="kpi-value" id="kpi-status-risco" style="font-size:12px; text-align:center; color:var(--accent-red); margin-top:5px;">CRÍTICO</div>
-
                     </div>
-
                 </div>
-
-
-
 
 
                 <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-
                     <span>REGISTRO DE PONTOS DE CALOR</span>
-
                     <select id="select-tabela-tempo" class="form-control" style="width: auto; padding: 2px 6px; font-size: 10px; height: auto;" onchange="renderListaAfetadas()">
-
                         <option value="24h" selected>24h</option>
-
                         <option value="7d">7 Dias</option>
-
                     </select>
-
                 </div>
-
-
 
                 <div style="display: flex; justify-content: space-between; font-size: 9px; text-transform: uppercase; color: var(--text-muted); padding: 0 10px 5px 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 5px;">
-
                     <span style="flex:2;">Área</span>
-
                     <span style="flex:1; text-align:center; cursor:pointer;" onclick="toggleSort('frp')" title="Ordenar por FRP">FRP <i class="fa-solid fa-sort"></i></span>
-
                     <span style="flex:1; text-align:right; cursor:pointer;" onclick="toggleSort('lim')" title="Ordenar por Tipo de Limite">Lim. <i class="fa-solid fa-sort"></i></span>
-
                 </div>
-
-
 
                 <div class="aoi-list" id="lista-afetadas">
 
-
-
                     <div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 11px;">Carregando focos...</div>
 
-
-
                 </div>
-
                 
-
                 <div id="nasa-error-msg" style="color: #ef4444; font-size: 11px; text-align: center; margin-top: 10px; display: none; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.4);"></div>
 
-
-
                 <!-- Player Timeline -->
-
                 <div id="timeline-player-container" class="timeline-player" style="display: none;">
-
                     <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-
                         <span style="font-size: 10px; font-weight: bold; color: var(--text-muted);">MÁQUINA DO TEMPO</span>
-
                         <div class="timeline-current" id="timeline-current-time">--/--/---- --:--</div>
-
                     </div>
-
                     
-
                     <div class="timeline-slider-wrapper">
-
                         <button id="btn-timeline-play" onclick="toggleTimelinePlay()"><i class="fa-solid fa-play"></i></button>
-
                         <div class="timeline-label" id="timeline-label-start">--/--</div>
-
                         <input type="range" id="timeline-slider" min="0" max="100" value="100" oninput="onTimelineScrub()">
-
                         <div class="timeline-label" id="timeline-label-end">--/--</div>
-
                     </div>
-
                 </div>
 
-
-
             </div>
-
-
 
             <div id="tab-filtros" class="tab-content">
 
-
-
                 <div class="form-group">
-
-
 
                     <label><i class="fa-solid fa-bolt"></i> Filtro de Potência FRP Mínimo (MW):</label>
 
-
-
                     <div class="range-container">
-
-
 
                         <input type="range" id="slider-frp" min="0" max="80" value="10" step="1" oninput="atualizarFiltros()">
 
-
-
                         <div class="range-value" id="val-frp">10 MW</div>
 
-
-
                     </div>
-
-
 
                     <small style="font-size: 10px; color: var(--accent-cyan);">* Critério CSN: Alerta para FRP > 10 MW.</small>
 
-
-
                 </div>
 
-
-
                 <div class="form-group">
-
-
 
                     <label><i class="fa-solid fa-map-location-dot"></i> Localização do Foco:</label>
-
                     <select class="form-control" id="select-localizacao" onchange="atualizarFiltros()">
-
                         <option value="todos" selected>Geral (Todos os focos)</option>
-
                         <option value="propriedade">Apenas Propriedades</option>
-
                         <option value="buffer">Apenas Buffer</option>
-
                     </select>
-
                 </div>
 
-
-
                 <div class="form-group">
-
-
 
                     <label><i class="fa-solid fa-clock"></i> Janela de Tempo (Mapa):</label>
 
-
-
                     <select class="form-control" id="select-janela" onchange="atualizarFiltros()">
-
-
 
                         <option value="24h" selected>Últimas 24 Horas (Recente)</option>
 
-
-
                         <option value="7d">Últimos 7 Dias (Histórico)</option>
-
-
 
                     </select>
 
-
-
                 </div>
-
-
 
                 <div class="form-group">
 
-
-
                     <label><i class="fa-solid fa-sun"></i> Turno do Satélite:</label>
-
-
 
                     <select class="form-control" id="select-daynight" onchange="atualizarFiltros()">
 
-
-
                         <option value="todos" selected>Dia e Noite</option>
-
-
 
                         <option value="D">Apenas Diurno (D)</option>
 
-
-
                         <option value="N">Apenas Noturno (N)</option>
-
-
 
                     </select>
 
-
-
                 </div>
 
-
-
             </div>
-
-
 
             <div id="tab-aoi" class="tab-content">
 
-
-
                 <div class="form-group"><input type="text" class="form-control" placeholder="🔍 Buscar propriedade..." onkeyup="filtrarListaAOI(this.value)"></div>
-
-
 
                 <div class="section-title"><span>Propriedades (<span id="count-aoi-total">91</span>)</span></div>
 
-
-
                 <div class="aoi-list" id="lista-completa-aoi"></div>
 
-
-
             </div>
-
-
 
             <div id="tab-clima" class="tab-content">
 
-
-
                 <div class="section-title"><span>Dados Climáticos</span><i class="fa-solid fa-cloud-sun"></i></div>
 
-
-
                 <style>
-
                     .weather-card { background: var(--bg-card, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-
                     .weather-card-title { font-size: 12px; font-weight: 600; color: #38bdf8; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-
                     .weather-links { display: flex; flex-direction: column; gap: 6px; }
-
                     .weather-link-btn { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.04); padding: 8px 10px; border-radius: 6px; text-decoration: none; color: #e2e8f0; font-size: 11px; transition: all 0.2s ease; border: 1px solid transparent; }
-
                     .weather-link-btn:hover { background: rgba(255,255,255,0.08); transform: translateX(3px); border-color: rgba(255,255,255,0.1); }
-
                     .weather-provider { display: flex; align-items: center; gap: 6px; font-weight: 500; }
-
                     .prov-inmet { color: #60a5fa; }
-
                     .prov-clima { color: #fb923c; }
-
                     .prov-info { color: #34d399; }
-
                 </style>
-
-
 
                 <div id="clima-container" style="display: flex; flex-direction: column; gap: 6px;">
 
-
-
                     <!-- Floriano / Canto do Buriti -->
-
                     <div class="weather-card">
-
                         <div class="weather-card-title"><i class="fa-solid fa-location-dot"></i> Floriano / C. do Buriti (PI)</div>
-
                         <div class="weather-links">
-
                             <a href="https://tempo.inmet.gov.br/TabelaEstacoes/A365" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-inmet"><i class="fa-solid fa-temperature-half"></i> INMET (A365)</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                             <a href="https://www.climatempo.com.br/previsao-do-tempo/agora/cidade/261/floriano-pi" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-clima"><i class="fa-solid fa-cloud"></i> Climatempo</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                             <a href="https://infometeo.com/br/pt/floriano-pi/" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-info"><i class="fa-solid fa-umbrella"></i> InfoMeteo</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                         </div>
-
                     </div>
-
-
 
                     <!-- Ouro Branco -->
-
                     <div class="weather-card">
-
                         <div class="weather-card-title"><i class="fa-solid fa-location-dot"></i> Ouro Branco</div>
-
                         <div class="weather-links">
-
                             <a href="https://tempo.inmet.gov.br/TabelaEstacoes/A513" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-inmet"><i class="fa-solid fa-temperature-half"></i> INMET (A513)</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                             <a href="https://www.climatempo.com.br/previsao-do-tempo/agora/cidade/3903/ourobranco-mg" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-clima"><i class="fa-solid fa-cloud"></i> Climatempo</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                             <a href="https://infometeo.com/br/pt/ouro-branco-rn/" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-info"><i class="fa-solid fa-umbrella"></i> InfoMeteo</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                         </div>
-
                     </div>
-
-
 
                     <!-- Mossoró -->
-
                     <div class="weather-card">
-
                         <div class="weather-card-title"><i class="fa-solid fa-location-dot"></i> Mossoró (RN)</div>
-
                         <div class="weather-links">
-
                             <a href="https://tempo.inmet.gov.br/TabelaEstacoes/A318" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-inmet"><i class="fa-solid fa-temperature-half"></i> INMET (A318)</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                             <a href="https://www.climatempo.com.br/previsao-do-tempo/cidade/333/mossoro-rn" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-clima"><i class="fa-solid fa-cloud"></i> Climatempo</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                             <a href="https://infometeo.com/br/pt/mossoro-rn/" target="_blank" class="weather-link-btn">
-
                                 <span class="weather-provider prov-info"><i class="fa-solid fa-umbrella"></i> InfoMeteo</span>
-
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px; opacity: 0.5;"></i>
-
                             </a>
-
                         </div>
-
                     </div>
-
-
 
                 </div>
 
-
-
             </div>
-
-
 
             <div id="tab-graficos" class="tab-content">
 
-
-
                 <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-
                     <span>Distribuição por Faixa de FRP</span>
-
                     <span style="font-size:9px; color:var(--text-muted); font-weight:normal; text-transform:none;">(Diário - Filtro do Mapa)</span>
-
                 </div>
-
                 <div style="height: 150px; margin-bottom: 12px;"><canvas id="chartFRP"></canvas></div>
 
-
-
                 <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-
                     <div style="display:flex; align-items:center; gap: 8px;">
-
                         <span>Focos por </span>
-
                         <div style="display:flex; background:rgba(255,255,255,0.05); border-radius:12px; padding:2px; border:1px solid rgba(255,255,255,0.1);">
-
                             <button id="btn-grafico-prop" onclick="window.chartLocal='propriedade'; document.getElementById('btn-grafico-prop').style.background='var(--accent-red)'; document.getElementById('btn-grafico-prop').style.color='white'; document.getElementById('btn-grafico-buf').style.background='transparent'; document.getElementById('btn-grafico-buf').style.color='var(--text-muted)'; if(typeof allFocos !== 'undefined' && allFocos.length > 0) processarFocos(allFocos);" style="background:var(--accent-red); color:white; border:none; border-radius:10px; padding:2px 10px; font-size:10px; cursor:pointer; font-weight:600; outline:none; transition:0.2s;">Propriedade</button>
-
                             <button id="btn-grafico-buf" onclick="window.chartLocal='buffer'; document.getElementById('btn-grafico-buf').style.background='var(--accent-orange)'; document.getElementById('btn-grafico-buf').style.color='white'; document.getElementById('btn-grafico-prop').style.background='transparent'; document.getElementById('btn-grafico-prop').style.color='var(--text-muted)'; if(typeof allFocos !== 'undefined' && allFocos.length > 0) processarFocos(allFocos);" style="background:transparent; color:var(--text-muted); border:none; border-radius:10px; padding:2px 10px; font-size:10px; cursor:pointer; font-weight:600; outline:none; transition:0.2s;">Buffer</button>
-
                         </div>
-
                     </div>
-
                     <span style="font-size:9px; color:var(--text-muted); font-weight:normal; text-transform:none;">(Diário)</span>
-
                 </div>
-
                 <div style="height: 150px; margin-bottom: 12px;"><canvas id="chartMunicipios"></canvas></div>
 
-
-
                 <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-
                     <span>Relatórios por Propriedade</span>
-
                     <span style="font-size:9px; color:var(--text-muted); font-weight:normal; text-transform:none;">(Histórico - Todo Período)</span>
-
                 </div>
-
                 <div style="height: 150px; margin-bottom: 12px;"><canvas id="chartRelatorios"></canvas></div>
 
-
-
                 <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-
                     <span>Evolução Temporal</span>
-
                     <span style="font-size:9px; color:var(--text-muted); font-weight:normal; text-transform:none;">(Semanal - Fixo 7 Dias)</span>
-
                 </div>
-
                 <div style="height: 150px; margin-bottom: 20px;"><canvas id="chartEvolucao"></canvas></div>
 
-
-
             </div>
-
-
 
         </div>
 
-
-
         <div id="map-container">
-
-
 
             <div id="map"></div>
 
-
-
             <div class="map-floating-panel">
-
                 <button class="map-floating-btn" onclick="centralizarTodasAOIs()"><i class="fa-solid fa-expand"></i> CENTRALIZAR MAPA</button>
-
             </div>
-
-
-
-
-
 
 
 
 
                 <div class="legend-card" style="display: flex; gap: 15px; width: 420px; max-width: calc(100% - 100px); bottom: 15px; padding: 8px 12px; font-size: 10px;">
-
                 <div style="flex: 1;">
-
                     <div class="legend-title"><span><i class="fa-solid fa-layer-group"></i> Potência FRP (MW)</span></div>
-
                     <div class="legend-bar"></div>
-
                     <div class="legend-labels"><span>&lt; 5 MW</span><span>10 (Alerta)</span><span>25</span><span>&gt; 50</span></div>
-
                 </div>
-
             </div>
-
-
 
             <div id="mobile-layer-controls" class="mobile-layer-controls">
-
                 <button id="chip-satelite" class="layer-chip active" onclick="toggleMobileLayer('satelite', this)">Satélite</button>
-
                 <button id="chip-ruas" class="layer-chip" onclick="toggleMobileLayer('ruas', this)">Ruas</button>
-
                 <button class="layer-chip active" onclick="toggleMobileLayer('fazendas', this)">Fazendas</button>
-
                 <button class="layer-chip active" onclick="toggleMobileLayer('buffers', this)">Buffers</button>
-
                 <button class="layer-chip active" onclick="toggleMobileLayer('focos', this)">Focos NASA</button>
-
                 <button class="layer-chip active" onclick="toggleMobileLayer('calor', this)">Mapa Calor</button>
-
             </div>
-
-
 
             <div id="coords-display">Lat: 0.0000 | Lon: 0.0000 | Zoom: 0</div>
 
-
-
         </div>
 
-
-
     </div>
-
-
 
     <div id="modal-relatorio" class="modal-overlay">
 
-
-
         <div class="modal-card">
-
-
 
             <div class="modal-header">
 
-
-
                 <div style="font-weight:700;"><i class="fa-solid fa-file-shield"></i> Boletim Diário de Queimadas • CSN</div>
-
-
 
                 <div id="print-time-stamp" style="font-size: 11px; color: #94a3b8; font-weight: normal; display: none; margin-left: auto; margin-right: 15px;"></div>
 
-
-
                 <button class="modal-close" onclick="fecharModal()">&times;</button>
 
-
-
             </div>
-
-
 
             <div id="relatorio-conteudo" style="font-size: 11px; line-height: 1.5;"></div>
 
-
-
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px; border-top:1px solid var(--border-color); padding-top:8px;">
-
-
 
                 <button class="btn-header" onclick="fecharModal()">Fechar</button>
 
-
-
                 <button class="btn-header btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir / PDF</button>
-
-
 
             </div>
 
-
-
         </div>
-
-
 
     </div>
 
-
-
     <script src="data_aoi.js"></script>
-
-
 
 ﻿    <script>
 
-
-
         // 4. REAL-TIME CLOCK (UTC & BRASÍLIA UTC-3)
-
-
 
         function updateClocks() {
 
-
-
             const now = new Date();
-
-
 
             const utcHours = String(now.getUTCHours()).padStart(2, '0');
 
-
-
             const utcMinutes = String(now.getUTCMinutes()).padStart(2, '0');
-
-
 
             const utcSeconds = String(now.getUTCSeconds()).padStart(2, '0');
 
-
-
             const utcDay = String(now.getUTCDate()).padStart(2, '0');
-
-
 
             const utcMonth = String(now.getUTCMonth() + 1).padStart(2, '0');
 
-
-
             const utcYear = now.getUTCFullYear();
 
-
-
             document.getElementById('clock-utc').innerText = `${utcHours}:${utcMinutes}:${utcSeconds} UTC`;
-
-
 
             document.getElementById('date-utc').innerText = `${utcDay}/${utcMonth}/${utcYear}`;
 
 
 
-
-
-
-
             const brtFormatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-
-
 
             const brtDateFormatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' });
 
-
-
             document.getElementById('clock-brt').innerText = `${brtFormatter.format(now)} BRT`;
-
-
 
             document.getElementById('date-brt').innerText = brtDateFormatter.format(now);
 
-
-
         }
 
-
-
         setInterval(updateClocks, 1000);
-
-
 
         updateClocks();
 
 
 
-
-
-
-
         // 2. MAPA & 3 BASEMAPS ESSENCIAIS
-
-
 
         const map = L.map('map', { center: [-12.82, -40.56], zoom: 6, zoomControl: false, attributionControl: false, layers: [] });
 
-
-
         map.createPane('googleSatellite'); map.getPane('googleSatellite').style.zIndex = 200; 
-
         map.createPane('camadaBuffers'); map.getPane('camadaBuffers').style.zIndex = 300; 
-
         map.createPane('camadaFazendas'); map.getPane('camadaFazendas').style.zIndex = 400; 
-
         map.createPane('camadaFocos'); map.getPane('camadaFocos').style.zIndex = 500; 
-
         
-
         let googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'], pane: 'googleSatellite'}).addTo(map);
-
         let openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, pane: 'googleSatellite'});
-
         let layerGroupAOI = L.featureGroup().addTo(map);
-
         let layerGroupBuffers = L.featureGroup().addTo(map);
-
         let layerGroupFocos = L.featureGroup().addTo(map);
-
         let layerHeat = L.layerGroup().addTo(map);
-
         
-
         let controlBaseMaps = { "Google Satélite": googleSat, "Rodovias / Ruas": openStreetMap };
-
         let scaleControl = L.control.scale({ position: 'bottomright', metric: true, imperial: false }).addTo(map);
-
         
-
         let controlOverlayMaps = { "Áreas / Fazendas": layerGroupAOI, "Buffers (5km)": layerGroupBuffers, "Focos NASA": layerGroupFocos, "Mapa de Calor": layerHeat };
-
         const isMobile = window.innerWidth <= 768;
-
         let layerControl = L.control.layers(controlBaseMaps, controlOverlayMaps, { collapsed: isMobile, position: 'topleft' }).addTo(map);
-
         
-
         let titleDiv = document.createElement('div');
-
         titleDiv.innerHTML = '<div style="font-size: 10px; font-weight: 700; color: white; margin-bottom: 10px; text-transform: uppercase;">Visualização do Mapa</div>';
-
         layerControl.getContainer().prepend(titleDiv);
-
-
 
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 
+        
 
 
 
@@ -1989,2716 +990,1354 @@
 
 
 
-
-
-
-
         
 
 
 
-
-
-
-
         
-
-
-
-
-
-
-
-        
-
-
-
-
 
 
 
         // Adiciona Google Satellite como a camada ativa padrão
 
-
-
         googleSat.addTo(map);
 
 
 
-
-
-
-
         
 
-
-
         
-
-
-
-
 
 
 
         setTimeout(() => { map.invalidateSize(); }, 200);
 
-
-
         window.addEventListener('resize', () => { map.invalidateSize(); });
-
-
-
-
 
 
 
         map.on('mousemove', e => {
 
-
-
             document.getElementById('coords-display').innerText = `Lat: ${e.latlng.lat.toFixed(5)} | Lon: ${e.latlng.lng.toFixed(5)}`;
-
-
 
         });
 
 
 
-
-
-
-
-        
-
-
-
-
-
-
-
         
 
 
 
         
 
-
+        
 
         let allFocos = [];
 
-
-
         let intersectedFocos = [];
-
-
 
         let chartFRPInstance = null;
 
-
-
         let chartMunInstance = null;
-
-
 
         let chartRelatoriosInstance = null;
 
-
-
         let chartEvolucaoInstance = null;
-
         
-
         let reportsData = {};
-
         
-
         let reportsHash = '';
 
 
 
-
-
-
-
         
-
         function addFeaturesToMap(features) {
-
             features.forEach(f => {
-
                 const isBuffer = ((f.properties && f.properties.source_layer) ? f.properties.source_layer.toLowerCase() : '').includes('buffer');
-
                 let geoLayer = L.geoJSON(f, {
-
                     style: isBuffer ? { color: "#FFA500", weight: 2, dashArray: "5, 5", opacity: 0.8, fillColor: "#FFA500", fillOpacity: 0.15 } : { color: "#FF0000", weight: 2.5, opacity: 0.95, fillColor: "#FF0000", fillOpacity: 0.3 },
-
                     pane: isBuffer ? 'camadaBuffers' : 'camadaFazendas',
-
                     onEachFeature: (feature, layer) => {
-
                         const p = feature.properties;
-
                         const nome = p.FAZENDA || p.Name || p.name || p.COD || 'Área sem nome';
-
                         const area = p.AREA_ha ? `${parseFloat(p.AREA_ha).toLocaleString('pt-BR')} ha` : '';
-
                         
-
                         if (isBuffer) {
-
                             layer.bindTooltip(`<b>BUFFER</b><br><small>Raio de amortecimento / entorno</small>`, { sticky: true });
-
                         } else {
-
                             layer.bindTooltip(`<b>${nome}</b><br><small>${p.Municipio || p.source_layer || '-'} ${area ? ' | ' + area : ''}</small>`, { sticky: true });
-
                             
-
                             layer.bindPopup(() => {
-
                                 let popupHtml = `<div class="popup-header"><span><i class="fa-solid fa-map"></i> ${nome}</span></div>`;
-
                                 const nomeUpper = nome.toUpperCase().trim();
-
                                 let hasReport = false;
-
                                 for (let k in reportsData) {
-
                                     if (nomeUpper.includes(k) || k.includes(nomeUpper)) {
-
                                         hasReport = true;
-
                                         popupHtml += `<div style="margin-top:6px; font-size:11px; color:#10b981; font-weight:bold;"><i class="fa-solid fa-file-check"></i> Relatórios Registrados:</div>`;
-
                                         reportsData[k].forEach(r => {
-
                                             let dtFormatada = r.data.split(' ')[0]; // Remove time if exists
-
                                             let classLower = r.classificacao.toLowerCase();
-
                                             let corMax = '#10b981'; // default
-
                                             if (classLower.includes('crítico') || classLower.includes('critico') || classLower.includes('iminente')) corMax = '#FF0000';
-
                                             else if (classLower.includes('atenção') || classLower.includes('atencao')) corMax = '#FFC000';
-
                                             else if (classLower.includes('favorável') || classLower.includes('favoravel')) corMax = '#38bdf8';
-
                                             
-
                                             popupHtml += `<div style="background:#0f172a; padding:6px; margin-top:4px; border-radius:4px; border:1px solid #334155;">`;
-
                                             popupHtml += `<div><b>Código:</b> ${r.codigo} | <b>Data:</b> ${dtFormatada}</div>`;
-
                                             popupHtml += `<div><b>Focos:</b> ${r.focos} | <b>Max:</b> <span style="color:${corMax}; font-weight:bold;">${r.classificacao}</span></div>`;
-
                                             popupHtml += `</div>`;
-
                                         });
-
                                         break;
-
                                     }
-
                                 }
-
                                 if (!hasReport) {
-
                                     popupHtml += `<div style="margin-top:6px; font-size:11px; color:#94a3b8;"><i class="fa-solid fa-file-xmark"></i> Sem relatórios registrados.</div>`;
-
                                 }
-
                                 return popupHtml;
-
                             });
-
                         }
-
                         
-
                         layer.on({ 
-
                             mouseover: e => e.target.setStyle({ weight: 4, color: '#f59e0b', fillOpacity: 0.4 }), 
-
                             mouseout: e => geoLayer.resetStyle(e.target), 
-
                             click: e => {
-
                                 map.fitBounds(e.target.getBounds(), { padding: [40, 40] });
-
                                 if (!isBuffer) layer.openPopup();
-
                             }
-
                         });
-
                     }
-
                 });
-
                 isBuffer ? layerGroupBuffers.addLayer(geoLayer) : layerGroupAOI.addLayer(geoLayer);
-
             });
-
         }
-
-
 
         function carregarAOIs() {
 
-
-
             if (window.AOI_GEOJSON) {
-
-
 
                 addFeaturesToMap(window.AOI_GEOJSON.features);
 
-
-
                 const farmsOnly = window.AOI_GEOJSON.features.filter(f => !((f.properties && f.properties.source_layer) ? f.properties.source_layer.toLowerCase() : '').includes('buffer'));
-
-
 
                 renderizarListaAOI(farmsOnly);
 
-
-
                 centralizarTodasAOIs();
-
-
 
             }
 
-
-
             carregarCatalogoCamadasDrive();
 
-
-
         }
-
-
-
-
 
 
 
         function centralizarTodasAOIs() {
 
-
-
             if (layerGroupAOI.getLayers().length > 0) map.fitBounds(layerGroupAOI.getBounds(), { padding: [30, 30] });
 
-
-
         }
-
-
-
-
 
 
 
         function renderizarListaAOI(features) {
 
-
-
             const container = document.getElementById('lista-completa-aoi');
-
-
 
             document.getElementById('count-aoi-total').innerText = features.length;
 
-
-
             container.innerHTML = '';
-
-
 
             features.forEach((feat, idx) => {
 
-
-
                 const p = feat.properties;
-
                 const nome = p.FAZENDA || p.Name || p.name || `Área #${idx + 1}`;
-
                 const div = document.createElement('div');
-
                 div.className = 'aoi-item';
-
                 div.style.justifyContent = 'flex-start';
-
                 div.style.gap = '10px';
 
-
-
                 div.innerHTML = `
-
                     <div style="background:var(--bg-panel); border:1px solid rgba(255,255,255,0.1); border-radius:6px; width: 28px; height: 28px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-
                         <i class="fa-solid fa-map" style="color:#10b981; font-size:12px;"></i>
-
                     </div>
-
                     <div style="flex:1; overflow:hidden;">
-
                         <div class="aoi-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${nome}">${nome}</div>
-
                     </div>
-
                     <i class="fa-solid fa-crosshairs" style="color:var(--text-muted); font-size:12px; flex-shrink:0;"></i>
-
                 `;
 
-
-
                 div.onclick = () => { map.fitBounds(L.geoJSON(feat).getBounds(), { maxZoom: 14 }); };
-
                 container.appendChild(div);
-
-
 
             });
 
-
-
         }
-
-
-
-
 
 
 
         function filtrarListaAOI(q) {
-
             const query = q.toLowerCase();
-
             document.querySelectorAll('#lista-completa-aoi .aoi-item').forEach(it => {
-
                 const name = it.querySelector('.aoi-name').innerText.toLowerCase();
-
                 it.style.display = name.includes(query) ? 'flex' : 'none';
-
             });
-
         }
-
-
-
-
 
 
 
         async function carregarCatalogoCamadasDrive() {
 
-
-
             const listDiv = document.getElementById('drive-layers-list');
-
             if (!listDiv) return;
-
-
 
             try {
 
-
-
                 const resp = await fetch('/api/layers');
-
-
 
                 if (resp.ok) {
 
-
-
                     const catalog = await resp.json();
-
-
 
                     listDiv.innerHTML = catalog.map(cat => `
 
-
-
                         <div style="background: var(--bg-card); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-
-
 
                             <div><div style="font-weight:600; color:#38bdf8;">${cat.name}</div><div style="font-size:9px; color:var(--text-muted);">${cat.features_count} feições • ${cat.geometry_type}</div></div>
 
-
-
                             <span style="font-size:8px; background:rgba(16,185,129,0.2); color:var(--accent-green); padding:1px 4px; border-radius:3px;">GeoJSON</span>
-
-
 
                         </div>
 
-
-
                     `).join('');
-
-
 
                 }
 
-
-
             } catch (e) {
-
-
 
                 listDiv.innerHTML = '<div style="color: var(--text-muted);">Camadas do Drive disponíveis.</div>';
 
-
-
             }
 
-
-
         }
-
-
-
-
 
 
 
         async function sincronizarDriveViaAPI() {
 
-
-
             try {
-
-
 
                 const resp = await fetch('/api/sync-drive');
 
-
-
                 const res = await resp.json();
-
-
 
                 if (res.status === 'success') {
 
-
-
                     alert(`Sucesso! ${res.layers_count} camadas sincronizadas (${res.total_aoi_polygons} polígonos).`);
-
-
 
                     window.location.reload();
 
-
-
                 } else {
-
-
 
                     alert(`Aviso: ${res.message}`);
 
-
-
                 }
-
-
 
             } catch (e) {
-
                 console.error(e);
-
                 alert('Erro ao sincronizar: ' + e.message);
-
             }
-
         }
-
-
 
         // 1. CONSULTA NASA FIRMS DIRETA API (PWA)
-
         async function atualizarFocosBackendProxy() {
-
             const btn = document.getElementById('btn-atualizar-focos');
-
             if (btn) {
-
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Consultando NASA NOAA-21...';
-
                 btn.disabled = true;
-
             }
-
-
 
             try {
-
                 const controller = new AbortController();
-
                 const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-
-
                 // Utilizando a base estática de 7 dias da NASA LANCE (NOAA-21 / J2) para a América do Sul
-
                 // A requisição é feita via backend local (/api-geoportal/api/focos/7d_csv) para evitar bloqueios de CORS.
-
                 const url = './proxy_nasa.php';
 
-
-
                 const resp = await fetch(url, { signal: controller.signal });
-
                 clearTimeout(timeoutId);
 
-
-
                 if (!resp.ok) {
-
                     throw new Error(`Servidor NASA retornou HTTP ${resp.status}: ${resp.statusText}`);
-
                 }
-
-
 
                 const csvText = await resp.text();
-
                 const lines = csvText.trim().split('\n');
-
                 const focos = [];
-
                 
-
                 if (lines.length > 1) {
-
                     const headers = lines[0].split(',');
-
                     for (let i = 1; i < lines.length; i++) {
-
                         const row = lines[i].split(',');
-
                         if (row.length === headers.length) {
-
                             let f = {};
-
                             for (let j = 0; j < headers.length; j++) {
-
                                 f[headers[j]] = row[j];
-
                             }
-
                             focos.push({
-
                                 latitude: parseFloat(f.latitude),
-
                                 longitude: parseFloat(f.longitude),
-
                                 frp: parseFloat(f.frp),
-
                                 confidence: f.confidence,
-
                                 daynight: f.daynight,
-
                                 acq_date: f.acq_date,
-
                                 acq_time: f.acq_time,
-
                                 satellite: "VIIRS NOAA-21",
-
                                 dentro_aoi: false
-
                             });
-
                         }
-
                     }
-
                 }
-
-
 
                 if (focos.length > 0) {
-
                     initTimeline(focos);
-
                     processarFocos(focos);
-
                 } else {
-
                     console.warn('⚠️ [NASA VAZIO] Nenhum foco registrado nas últimas 24h na região.');
-
                     processarFocos([]);
-
                 }
-
             } catch (err) {
-
                 console.error('❌ [NASA ERRO]', err);
-
                 const errorMsgDiv = document.getElementById('nasa-error-msg');
-
                 if (errorMsgDiv) {
-
                     errorMsgDiv.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Aviso na consulta à NASA FIRMS: O serviço está indisponível no momento (' + err.message + ').';
-
                     errorMsgDiv.style.display = 'block';
-
                 }
-
                 processarFocos([]);
-
             } finally {
-
                 if (btn) {
-
                     btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Atualizar Focos (Direto)';
-
                     btn.disabled = false;
-
                 }
-
             }
-
         }
 
-
-
         function processarFocos(focosData) {
-
             allFocos = focosData || [];
-
             layerGroupFocos.clearLayers();
-
             if (layerHeat) {
-
                 layerHeat.clearLayers();
-
             }
 
-
-
             const minFRP = parseFloat(document.getElementById('slider-frp').value) || 0;
-
             const daynight = document.getElementById('select-daynight').value;
-
             const localizacaoFiltro = document.getElementById('select-localizacao') ? document.getElementById('select-localizacao').value : 'todos';
 
-
-
             let filtrados = allFocos.filter(f => {
-
                 if (f.frp < minFRP) return false;
-
                 if (daynight !== 'todos' && f.daynight !== daynight) return false;
-
                 return true;
-
             });
-
-
 
             intersectedFocos = [];
-
             let totalAOI = 0;
-
             let maxFRP_AOI = 0;
-
             let totalFora = 0;
-
             let maxFRP_Fora = 0;
-
             let aoiMap = {};
-
             let heatPoints = [];
-
             const aoiFeatures = (window.AOI_GEOJSON && window.AOI_GEOJSON.features) ? window.AOI_GEOJSON.features : [];
-
             const farmFeatures = aoiFeatures.filter(feat => {
-
                 const src = ((feat.properties && feat.properties.source_layer) ? feat.properties.source_layer.toLowerCase() : '');
-
                 return !src.includes('buffer');
-
             });
-
             const bufferFeatures = aoiFeatures.filter(feat => {
-
                 const src = ((feat.properties && feat.properties.source_layer) ? feat.properties.source_layer.toLowerCase() : '');
-
                 return src.includes('buffer');
-
             });
-
-
 
             const janelaTempo = document.getElementById('select-janela') ? document.getElementById('select-janela').value : '24h';
-
             const now = window.timelineCurrentDate || new Date();
 
-
-
             filtrados.forEach(f => {
-
                 let tipoLocal = 'fora'; // 'propriedade', 'buffer', 'fora'
-
                 let aoiNome = null;
-
                 let aoiMun = null;
-
                 let statusLabel = 'Fora da AOI';
-
                 let statusColor = '#10b981';
 
-
-
                 let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
-
                 let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
-
                 let fireDate = new Date(fireDateStr);
-
                 let diffHours = (now - fireDate) / (1000 * 60 * 60);
-
-
 
                 const inWindow = diffHours >= 0 && (janelaTempo === '7d' || diffHours <= 24);
 
-
-
                 if (typeof f.tipoLocal !== 'undefined') {
-
                     tipoLocal = f.tipoLocal;
-
                     aoiNome = f.aoiNome;
-
                     aoiMun = f.aoiMun;
-
                     statusLabel = f.statusLabel;
-
                     statusColor = f.statusColor;
-
                 } else if (typeof turf !== 'undefined') {
-
                     const pt = turf.point([f.longitude, f.latitude]);
-
                     
-
                     // 1. Checa primeiro se está REALMENTE dentro da propriedade (fazenda)
-
                     for (let farm of farmFeatures) {
-
                         if (turf.booleanPointInPolygon(pt, farm)) {
-
                             tipoLocal = 'propriedade';
-
                             aoiNome = farm.properties.FAZENDA || farm.properties.Name || farm.properties.name || farm.properties.COD || 'Área CSN';
-
                             aoiMun = farm.properties.Municipio || farm.properties.UF || '-';
-
                             statusLabel = `${aoiNome} (Na Propriedade)`;
-
                             statusColor = '#ef4444';
-
                             break;
-
                         }
-
                     }
-
-
 
                     // 2. Se NÃO está na fazenda, checa se está no Buffer Geral delimitado (5km / entorno)
-
                     if (tipoLocal === 'fora') {
-
                         for (let buf of bufferFeatures) {
-
                             if (turf.booleanPointInPolygon(pt, buf)) {
-
                                 tipoLocal = 'buffer';
-
                                 aoiNome = buf.properties.Municipio ? `Buffer - ${buf.properties.Municipio}` : 'BUFFER';
-
                                 aoiMun = buf.properties.Municipio || buf.properties.UF || '-';
-
                                 statusLabel = aoiNome;
-
                                 statusColor = '#f59e0b';
-
                                 break;
-
                             }
-
                         }
-
                     }
-
                     
-
                     // Cache the results so we don't run Turf again on scrub
-
                     f.tipoLocal = tipoLocal;
-
                     f.aoiNome = aoiNome;
-
                     f.aoiMun = aoiMun;
-
                     f.statusLabel = statusLabel;
-
                     f.statusColor = statusColor;
-
                 }
 
-
-
                 if (localizacaoFiltro === 'propriedade' && tipoLocal !== 'propriedade') return;
-
                 if (localizacaoFiltro === 'buffer' && tipoLocal !== 'buffer') return;
-
-
 
                 const estaDentro = (tipoLocal === 'propriedade' || tipoLocal === 'buffer');
 
-
-
                 if (estaDentro) {
-
                     if (inWindow) {
-
                         totalAOI++;
-
                         if (f.frp > maxFRP_AOI) maxFRP_AOI = f.frp;
-
                         if (!aoiNome) aoiNome = 'Área Monitorada';
-
                         if (!aoiMap[aoiNome]) {
-
                             let bnd = null;
-
                             if (tipoLocal === 'propriedade') {
-
                                 const match = farmFeatures.find(f => (f.properties.FAZENDA || f.properties.Name || f.properties.name || f.properties.COD || 'Área CSN') === aoiNome);
-
                                 if (match) bnd = L.geoJSON(match).getBounds();
-
                             } else if (tipoLocal === 'buffer') {
-
                                 const match = bufferFeatures.find(f => (f.properties.Municipio || f.properties.UF || '-') === aoiMun);
-
                                 if (match) bnd = L.geoJSON(match).getBounds();
-
                             }
-
                             aoiMap[aoiNome] = { count: 0, maxFRP: 0, mun: aoiMun || '-', lat: f.latitude, lon: f.longitude, tipo: tipoLocal, bounds: bnd };
-
                         }
-
                         aoiMap[aoiNome].count++;
-
                         if (f.frp > aoiMap[aoiNome].maxFRP) aoiMap[aoiNome].maxFRP = f.frp;
-
                     }
-
                     f.dentro_aoi = true;
-
                     f.tipo_local = tipoLocal;
-
                     f.aoi_nome = aoiNome;
-
                     f.aoi_municipio = aoiMun;
-
                     intersectedFocos.push(f);
-
                 } else {
-
                     if (inWindow) {
-
                         totalFora++;
-
                         if (f.frp > maxFRP_Fora) maxFRP_Fora = f.frp;
-
                     }
-
                 }
-
-
 
                 if (inWindow) {
-
                     heatPoints.push([f.latitude, f.longitude, Math.min(f.frp / 50, 1)]);
 
-
-
                     const cor = obterCorFRP(f.frp);
-
                     const marker = L.circleMarker([f.latitude, f.longitude], {
-
                         radius: f.frp > 30 ? 8 : (f.frp > 10 ? 6 : 4.5),
-
                         fillColor: cor,
-
                         color: tipoLocal === 'propriedade' ? '#ffffff' : (tipoLocal === 'buffer' ? '#f59e0b' : '#1e293b'),
-
                         weight: tipoLocal === 'propriedade' ? 2.5 : (tipoLocal === 'buffer' ? 2 : 1),
-
                         opacity: 1,
-
                         fillOpacity: 0.85,
-
                         pane: 'camadaFocos'
-
                     });
 
-
-
                     const badgeLocal = tipoLocal === 'propriedade' 
-
                         ? '<span style="color:#ef4444;font-weight:700;"><i class="fa-solid fa-fire"></i> DENTRO DA PROPRIEDADE</span>' 
-
                         : (tipoLocal === 'buffer' 
-
                             ? '<span style="color:#f59e0b;font-weight:700;"><i class="fa-solid fa-shield"></i> NO BUFFER GERAL (Entorno)</span>' 
-
                             : '<span style="color:#10b981;font-weight:700;">Fora da AOI</span>');
 
-
-
                     marker.bindPopup(`
-
                         <div class="popup-header"><span>🔥 VIIRS NOAA-21 (375m)</span><span style="color:${cor};font-weight:700;">FRP ${f.frp.toFixed(1)} MW</span></div>
-
                         <div class="popup-row"><strong>Localização:</strong> <span>${badgeLocal}</span></div>
-
                         <div class="popup-row"><strong>Status / Área:</strong> <span style="color:${statusColor};font-weight:700;">${statusLabel}</span></div>
-
                         ${aoiMun ? `<div class="popup-row"><strong>Município:</strong> <span>${aoiMun}</span></div>` : ''}
-
                         <div class="popup-row"><strong>Data/Hora:</strong> <span>${f.acq_date} ${f.acq_time.toString().padStart(4, '0').replace(/(\d{2})(\d{2})/, '$1:$2')} UTC</span></div>
-
                         <div class="popup-row"><strong>Coordenadas:</strong> <span>${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</span></div>
-
                     `);
 
-
-
                     layerGroupFocos.addLayer(marker);
-
                 }
-
             });
-
-
 
             if (heatPoints.length > 0 && typeof L.heatLayer === 'function' && layerHeat) {
-
                 const heat = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 12 });
-
                 layerHeat.addLayer(heat);
-
             }
-
-
 
             const intersectedFocosFiltered = intersectedFocos.filter(f => {
-
                 let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
-
                 let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
-
                 let fireDate = new Date(fireDateStr);
-
                 let diffHours = (now - fireDate) / (1000 * 60 * 60);
-
                 return (janelaTempo === '7d' || diffHours <= 24);
-
             });
-
-
 
             atualizarDashboardUI(intersectedFocosFiltered, totalAOI, maxFRP_AOI, totalFora, maxFRP_Fora, aoiMap);
-
             atualizarGraficos(intersectedFocos, aoiMap, intersectedFocosFiltered);
-
         }
-
-
 
         function atualizarTrendChart(focos) {
-
             const container = document.getElementById('trend-chart-container');
-
             if (!container) return;
-
             
-
             // Generate 24 hour buckets
-
             const buckets = new Array(24).fill(0);
-
             let maxCount = 0;
-
             
-
             focos.forEach(f => {
-
                 if (f.acq_time) {
-
                     const hour = parseInt(f.acq_time.substring(0, 2), 10);
-
                     if (!isNaN(hour) && hour >= 0 && hour < 24) {
-
                         buckets[hour]++;
-
                         if (buckets[hour] > maxCount) maxCount = buckets[hour];
-
                     }
-
                 }
-
             });
-
-
 
             container.innerHTML = '';
-
             if (maxCount === 0) {
-
                 container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); font-size:10px; align-self:center;">Sem dados de tempo</div>';
-
                 return;
-
             }
-
-
 
             buckets.forEach((count, idx) => {
-
                 const percentage = Math.max((count / maxCount) * 100, 2); // Min 2% height for visibility
-
                 const bar = document.createElement('div');
-
                 bar.style.flex = '1';
-
                 bar.style.backgroundColor = count > 0 ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)';
-
                 bar.style.height = count > 0 ? `${percentage}%` : '5%';
-
                 bar.title = `${count} focos às ${idx.toString().padStart(2, '0')}:00 UTC`;
-
                 container.appendChild(bar);
-
             });
-
         }
-
-
 
         function obterCorFRP(frp) {
-
             if (frp >= 50) return '#a855f7';
-
             if (frp >= 20) return '#ef4444';
-
             if (frp >= 10) return '#f97316';
-
             return '#facc15';
-
         }
 
-
-
         async function calcularEAtualizarRiscoMeteorologico(focos) {
-
             const statusElem = document.getElementById('kpi-status-risco');
-
             const gaugeNeedle = document.getElementById('gauge-needle');
-
             if (!statusElem || !gaugeNeedle) return;
 
-
-
             if (!focos || focos.length === 0) {
-
                 statusElem.innerText = 'NORMAL';
-
                 statusElem.style.color = '#10b981';
-
                 gaugeNeedle.style.rotate = '-72deg';
-
                 return;
-
             }
-
-
 
             let maxFRP = 0;
-
             let targetLat = -8.08;
-
             let targetLon = -43.37;
-
             
-
             focos.forEach(f => {
-
                 if (f.frp > maxFRP) {
-
                     maxFRP = f.frp;
-
                     targetLat = f.latitude;
-
                     targetLon = f.longitude;
-
                 }
-
             });
 
-
-
             if (maxFRP <= 10) {
-
                 statusElem.innerText = 'NORMAL';
-
                 statusElem.style.color = '#10b981';
-
                 gaugeNeedle.style.rotate = '-72deg';
-
                 return;
-
             }
 
-
-
             try {
-
                 const url = `https://api.open-meteo.com/v1/forecast?latitude=${targetLat}&longitude=${targetLon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m`;
-
                 const response = await fetch(url);
-
                 if (!response.ok) throw new Error('API erro');
-
                 const data = await response.json();
-
                 const current = data.current;
 
-
-
                 if (current) {
-
                     const temp = current.temperature_2m;
-
                     const hum = current.relative_humidity_2m;
-
                     const prec = current.precipitation;
-
                     const wind = current.wind_speed_10m;
 
-
-
                     let ptTemp = temp <= 28 ? 1 : (temp <= 34 ? 2 : 3);
-
                     let ptHum = hum > 40 ? 1 : (hum >= 30 ? 2 : 3);
-
                     let ptWind = wind <= 15 ? 1 : (wind <= 30 ? 2 : 3);
-
                     let ptPrec = prec > 10 ? 1 : (prec >= 2 ? 2 : 3);
-
                     
-
                     let ptFrp = maxFRP <= 10 ? 0 : (maxFRP <= 50 ? 1 : 2);
-
-
 
                     let score = (ptTemp + ptHum + ptWind + ptPrec) * ptFrp;
 
-
-
                     if (score === 0) {
-
                         statusElem.innerText = 'NORMAL';
-
                         statusElem.style.color = '#10b981';
-
                         gaugeNeedle.style.rotate = '-72deg';
-
                     } else if (score >= 4 && score <= 6) {
-
                         statusElem.innerText = 'BAIXO';
-
                         statusElem.style.color = '#eab308';
-
                         gaugeNeedle.style.rotate = '-36deg';
-
                     } else if (score >= 7 && score <= 11) {
-
                         statusElem.innerText = 'MODERADO';
-
                         statusElem.style.color = '#f59e0b';
-
                         gaugeNeedle.style.rotate = '0deg';
-
                     } else if (score >= 12 && score <= 19) {
-
                         statusElem.innerText = 'CRÍTICO';
-
                         statusElem.style.color = '#ef4444';
-
                         gaugeNeedle.style.rotate = '36deg';
-
                     } else {
-
                         statusElem.innerText = 'EXTREMO';
-
                         statusElem.style.color = '#991b1b';
-
                         gaugeNeedle.style.rotate = '72deg';
-
                     }
-
                 }
-
             } catch (err) {
-
                 console.error("Erro ao calcular risco metereológico:", err);
-
             }
-
         }
 
-
-
         function atualizarDashboardUI(intersectedFocos, totalAOI, maxFRP_AOI, totalFora, maxFRP_Fora, aoiMap) {
-
             document.getElementById('kpi-focos-aoi').innerText = totalAOI;
-
             const mFrpElem = document.getElementById('kpi-max-frp-aoi');
-
             if (mFrpElem) mFrpElem.innerHTML = `${maxFRP_AOI.toFixed(1)} <span style="font-size:10px">MW</span>`;
-
             
-
             const propKeys = Object.keys(aoiMap).filter(k => aoiMap[k].tipo === 'propriedade');
-
             const numAtingidas = propKeys.length;
-
             document.getElementById('kpi-aoi-atingidas').innerText = numAtingidas;
 
-
-
             const totalPropriedade = intersectedFocos.filter(f => f.tipo_local === 'propriedade').length;
-
             const totalBuffer = intersectedFocos.filter(f => f.tipo_local === 'buffer').length;
-
-
 
             calcularEAtualizarRiscoMeteorologico(intersectedFocos);
 
-
-
             const elemFora = document.getElementById('kpi-focos-fora');
-
             if (elemFora) elemFora.innerText = totalFora;
-
             const elemMaxFora = document.getElementById('kpi-max-frp-fora');
-
             if (elemMaxFora) elemMaxFora.innerHTML = `${maxFRP_Fora.toFixed(1)} <span style="font-size:10px">MW</span>`;
 
-
-
             const alertBox = document.getElementById('critical-alert-box');
-
             if (alertBox) {
-
                 if (totalAOI > 0) {
-
                     alertBox.style.display = 'flex';
-
                     const abt = document.getElementById('alert-box-text');
-
                     if (abt) abt.innerText = `${totalAOI} foco(s) detectados dentro das fazendas! Maior FRP na propriedade: ${maxFRP_AOI.toFixed(1)} MW.`;
-
                 } else {
-
                     alertBox.style.display = 'none';
-
                 }
-
             }
-
-
 
             const container = document.getElementById('lista-afetadas');
-
             if (container) {
-
                 renderListaAfetadas();
-
             }
-
         }
-
-
 
         let currentSortField = 'frp';
-
         let currentSortOrder = 'desc';
 
-
-
         function renderListaAfetadas() {
-
             const container = document.getElementById('lista-afetadas');
-
             if (!container) return;
-
             
-
             const tabelaTempo = document.getElementById('select-tabela-tempo') ? document.getElementById('select-tabela-tempo').value : '24h';
-
             const now = window.timelineCurrentDate || new Date();
 
-
-
             let focosParaTabela = intersectedFocos.filter(f => {
-
                 let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
-
                 let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
-
                 let fireDate = new Date(fireDateStr);
-
                 let diffHours = (now - fireDate) / (1000 * 60 * 60);
-
                 return diffHours >= 0 && (tabelaTempo === '7d' || diffHours <= 24);
-
             });
-
-
 
             if (focosParaTabela.length === 0) {
-
                 container.innerHTML = `<div style="padding:15px; text-align:center; color:var(--accent-green); font-size:11px;"><i class="fa-solid fa-circle-check" style="font-size:20px; margin-bottom:4px; display:block;"></i>Nenhuma área atingida.</div>`;
-
                 return;
-
             }
-
             
-
             // Sort focosParaTabela
-
             focosParaTabela.sort((a, b) => {
-
                 let valA, valB;
-
                 if (currentSortField === 'frp') {
-
                     valA = a.frp; valB = b.frp;
-
                 } else if (currentSortField === 'lim') {
-
                     // Propriedade (1) > Buffer (0)
-
                     valA = a.tipo_local === 'propriedade' ? 1 : 0;
-
                     valB = b.tipo_local === 'propriedade' ? 1 : 0;
-
                 }
-
                 
-
                 if (valA < valB) return currentSortOrder === 'asc' ? -1 : 1;
-
                 if (valA > valB) return currentSortOrder === 'asc' ? 1 : -1;
-
                 return 0;
-
             });
-
-
 
             container.innerHTML = '';
-
             focosParaTabela.forEach((f) => {
-
                 const div = document.createElement('div');
-
                 div.className = 'aoi-item has-fire';
-
                 div.title = 'Clique para ver o ponto exato no mapa';
-
                 
-
                 const isBuffer = f.tipo_local === 'buffer';
-
                 const limBadge = isBuffer ? '<span style="background:var(--accent-orange);color:white;padding:2px 4px;border-radius:4px;font-size:8px;">BUFFER</span>' : '<span style="background:var(--accent-red);color:white;padding:2px 4px;border-radius:4px;font-size:8px;">PROP</span>';
-
                 const colorTitle = f.tipo_local === 'buffer' ? '#f59e0b' : '#ef4444';
-
                 const timeFmt = f.acq_time.toString().padStart(4, '0').replace(/(\d{2})(\d{2})/, '$1:$2');
-
                 div.innerHTML = `<div><div class="aoi-name" style="color:${colorTitle};">${f.aoi_nome}</div><div class="aoi-subtext">${f.aoi_municipio} • ${timeFmt} UTC</div></div><span style="font-weight:700; color:${obterCorFRP(f.frp)}; font-size:11px;">${f.frp.toFixed(1)} MW</span><div style="margin-left:10px;">${limBadge}</div>`;
-
                 
-
                 div.addEventListener('click', function() {
-
                     map.flyTo([f.latitude, f.longitude], 14);
-
                 });
-
                 container.appendChild(div);
-
             });
-
         }
-
-
 
         function toggleSort(field) {
-
             if (currentSortField === field) {
-
                 currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
-
             } else {
-
                 currentSortField = field;
-
                 currentSortOrder = 'desc';
-
             }
-
             renderListaAfetadas();
-
         }
-
-
-
 
 
         function atualizarGraficos(focos7d, aoiMap, focosFiltrados) {
-
             const faixas = { '0-5': 0, '5-10': 0, '10-25': 0, '25-50': 0, '> 50': 0 };
-
             focosFiltrados.forEach(f => {
-
                 if (f.frp < 5) faixas['0-5']++;
-
                 else if (f.frp < 10) faixas['5-10']++;
-
                 else if (f.frp < 25) faixas['10-25']++;
-
                 else if (f.frp < 50) faixas['25-50']++;
-
                 else faixas['> 50']++;
-
             });
 
-
-
             const elemChartFRP = document.getElementById('chartFRP');
-
             if (elemChartFRP) {
-
                 const ctxFRP = elemChartFRP.getContext('2d');
-
                 if (chartFRPInstance) chartFRPInstance.destroy();
-
                 chartFRPInstance = new Chart(ctxFRP, {
-
                     type: 'bar',
-
                     data: {
-
                         labels: Object.keys(faixas),
-
                         datasets: [{
-
                             label: 'Focos',
-
                             data: Object.values(faixas),
-
                             backgroundColor: ['#facc15', '#fde047', '#f97316', '#ef4444', '#a855f7'],
-
                             borderRadius: 4
-
                         }]
-
                     },
-
                     options: {
-
                         responsive: true,
-
                         maintainAspectRatio: false,
-
                         plugins: { legend: { display: false } },
-
                         scales: {
-
                             x: { ticks: { color: '#94a3b8', font: { size: 9 } } },
-
                             y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#334155' } }
-
                         },
-
                         onClick: (event, elements) => {
-
                             if (elements.length > 0) {
-
                                 const idx = elements[0].index;
-
                                 const label = chartFRPInstance.data.labels[idx];
-
                                 let targetFocos = [];
-
                                 if (label === '0-5') targetFocos = intersectedFocos.filter(f => f.frp < 5);
-
                                 else if (label === '5-10') targetFocos = intersectedFocos.filter(f => f.frp >= 5 && f.frp < 10);
-
                                 else if (label === '10-25') targetFocos = intersectedFocos.filter(f => f.frp >= 10 && f.frp < 25);
-
                                 else if (label === '25-50') targetFocos = intersectedFocos.filter(f => f.frp >= 25 && f.frp < 50);
-
                                 else if (label === '> 50') targetFocos = intersectedFocos.filter(f => f.frp >= 50);
-
                                 
-
                                 if (targetFocos.length > 0) {
-
                                     const bounds = L.latLngBounds(targetFocos.map(f => [f.latitude, f.longitude]));
-
                                     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-
                                 }
-
                             }
-
                         }
-
                     }
-
                 });
-
             }
 
-
-
             const elemChartMun = document.getElementById('chartMunicipios');
-
             if (elemChartMun) {
-
                 const tipoSelecionado = window.chartLocal || 'propriedade';
-
                 let chartMap = {};
-
                 const getRange = (frp) => {
-
                     if (frp < 5) return '0-5 MW';
-
                     if (frp < 10) return '5-10 MW';
-
                     if (frp < 25) return '10-25 MW';
-
                     if (frp < 50) return '25-50 MW';
-
                     return '> 50 MW';
-
                 };
-
                 focosFiltrados.forEach(f => {
-
                     if (f.tipo_local === tipoSelecionado) {
-
                         let range = getRange(f.frp);
-
                         let key = `${f.aoi_nome} (${range})`;
-
                         if (!chartMap[key]) chartMap[key] = { count: 0, color: obterCorFRP(f.frp) };
-
                         chartMap[key].count++;
-
                     }
-
                 });
-
                 let sortedKeys = Object.keys(chartMap).sort((a,b) => chartMap[b].count - chartMap[a].count).slice(0, 8);
-
                 
-
                 const labelsMun = sortedKeys;
-
                 const dataMun = sortedKeys.map(k => chartMap[k].count);
-
                 const bgColors = sortedKeys.length > 0 ? sortedKeys.map(k => chartMap[k].color) : ['#334155'];
-
-
 
                 const noDataLabel = tipoSelecionado === 'buffer' ? 'Sem Focos no Buffer' : 'Sem Focos nas Propriedades';
 
-
-
                 const ctxMun = elemChartMun.getContext('2d');
-
                 if (chartMunInstance) chartMunInstance.destroy();
-
                 chartMunInstance = new Chart(ctxMun, {
-
                     type: 'doughnut',
-
                     data: {
-
                         labels: labelsMun.length > 0 ? labelsMun : [noDataLabel],
-
                         datasets: [{
-
                             data: dataMun.length > 0 ? dataMun : [1],
-
                             backgroundColor: bgColors,
-
                             borderWidth: 0
-
                         }]
-
                     },
-
                     options: {
-
                         responsive: true,
-
                         maintainAspectRatio: false,
-
                         plugins: {
-
                             legend: {
-
                                 position: 'bottom',
-
                                 labels: { color: '#94a3b8', font: { size: 9 } }
-
                             }
-
                         },
-
                         onClick: (event, elements) => {
-
                             if (elements.length > 0) {
-
                                 const idx = elements[0].index;
-
                                 const fullLabel = chartMunInstance.data.labels[idx];
-
                                 if (fullLabel === 'Sem Focos nas Propriedades' || fullLabel === 'Sem Focos no Buffer') return;
-
                                 
-
                                 const aoiNomeMatch = fullLabel.match(/^(.*) \(/);
-
                                 const aoiNome = aoiNomeMatch ? aoiNomeMatch[1] : fullLabel;
-
                                 
-
                                 if (window.AOI_GEOJSON) {
-
                                     if (tipoSelecionado === 'buffer') {
-
                                         let targetFocos = intersectedFocos.filter(f => f.aoi_nome === aoiNome);
-
                                         if (targetFocos.length > 0) {
-
                                             const bounds = L.latLngBounds(targetFocos.map(f => [f.latitude, f.longitude]));
-
                                             map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-
                                         }
-
                                     } else {
-
                                         const features = window.AOI_GEOJSON.features.filter(feat => {
-
                                             const p = feat.properties;
-
                                             return (p.FAZENDA || p.name || p.COD || '') === aoiNome;
-
                                         });
-
                                         if (features.length > 0) {
-
                                             map.fitBounds(L.geoJSON(features).getBounds(), { padding: [40, 40] });
-
                                         } else if (aoiMap[aoiNome] && aoiMap[aoiNome].lat) {
-
                                             map.flyTo([aoiMap[aoiNome].lat, aoiMap[aoiNome].lon], 14);
-
                                         }
-
                                     }
-
                                 }
-
                             }
-
                         }
-
                     }
-
                 });
-
             }
-
-
 
             // Gráfico de Evolução Temporal (Últimos 7 Dias)
-
             const dateCounts = {};
-
             
-
             // Build the last 7 days array to ensure all days are represented, even if 0 fires
-
             const last7Days = [];
-
             for (let i = 6; i >= 0; i--) {
-
                 const d = new Date();
-
                 d.setDate(d.getDate() - i);
-
                 const isoDate = d.toISOString().split('T')[0]; // YYYY-MM-DD
-
                 last7Days.push(isoDate);
-
                 dateCounts[isoDate] = 0;
-
             }
-
-
 
             focos7d.forEach(f => {
-
                 if (f.acq_date && dateCounts[f.acq_date] !== undefined) {
-
                     dateCounts[f.acq_date]++;
-
                 } else if (f.acq_date) {
-
                     // Just in case there's an older date, initialize it
-
                     if (!dateCounts[f.acq_date]) dateCounts[f.acq_date] = 0;
-
                     dateCounts[f.acq_date]++;
-
                 }
-
             });
-
-
 
             // If NASA gives dates not in our 7 day array, let's just sort whatever dates we got
-
             const sortedDates = Object.keys(dateCounts).sort();
-
             const labelsDays = sortedDates.map(d => {
-
                 const parts = d.split('-');
-
                 return parts.length === 3 ? `${parts[2]}/${parts[1]}` : d;
-
             });
-
             const dataDays = sortedDates.map(d => dateCounts[d]);
 
-
-
             const elemChartEvolucao = document.getElementById('chartEvolucao');
-
             if (elemChartEvolucao) {
-
                 const ctxEvolucao = elemChartEvolucao.getContext('2d');
-
                 if (chartEvolucaoInstance) chartEvolucaoInstance.destroy();
-
                 chartEvolucaoInstance = new Chart(ctxEvolucao, {
-
                     type: 'line',
-
                     data: {
-
                         labels: labelsDays,
-
                         datasets: [{
-
                             label: 'Focos (Total)',
-
                             data: dataDays,
-
                             borderColor: '#ef4444',
-
                             backgroundColor: 'rgba(239, 68, 68, 0.15)',
-
                             fill: true,
-
                             tension: 0.3,
-
                             pointBackgroundColor: '#ef4444',
-
                             pointBorderColor: '#fff',
-
                             pointRadius: 2,
-
                             pointHoverRadius: 4,
-
                             borderWidth: 2
-
                         }]
-
                     },
-
                     options: {
-
                         responsive: true,
-
                         maintainAspectRatio: false,
-
                         plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-
                         scales: {
-
                             x: { ticks: { color: '#94a3b8', font: { size: 8 } }, grid: { display: false } },
-
                             y: { ticks: { color: '#94a3b8', font: { size: 9 }, stepSize: 1, precision: 0 }, grid: { color: '#334155' } }
-
                         },
-
                         interaction: {
-
                             mode: 'nearest',
-
                             axis: 'x',
-
                             intersect: false
-
                         }
-
                     }
-
                 });
-
             }
-
         }
 
-
-
         function abrirRelatorio(periodo = '7d') {
-
             const dataHoje = new Date().toLocaleDateString('pt-BR');
-
             const stamp = document.getElementById('print-time-stamp');
-
             if (stamp) stamp.innerText = 'Impresso em: ' + new Date().toLocaleString('pt-BR');
-
             
-
             const now = window.timelineCurrentDate || new Date();
 
-
-
             let focosRelatorio = intersectedFocos;
-
             if (periodo === '24h') {
-
                 focosRelatorio = focosRelatorio.filter(f => {
-
                     let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
-
                     let fireDate = new Date(`${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`);
-
                     let diff = (now - fireDate) / (1000 * 60 * 60);
-
                     return diff >= 0 && diff <= 24;
-
                 });
-
             } else {
-
                 focosRelatorio = focosRelatorio.filter(f => {
-
                     let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
-
                     let fireDate = new Date(`${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`);
-
                     let diff = (now - fireDate) / (1000 * 60 * 60);
-
                     return diff >= 0;
-
                 });
-
             }
 
-
-
             let kpiAoiVal = focosRelatorio.length;
-
             let kpiMaxFrpVal = 0;
-
             focosRelatorio.forEach(f => {
-
                 if (f.frp > kpiMaxFrpVal) kpiMaxFrpVal = f.frp;
-
             });
-
-
 
             let tabela = '';
 
-
-
             if (focosRelatorio.length > 0) {
-
                 tabela = `
-
                     <table style="width:100%; border-collapse:collapse; margin-top:8px; font-size:12px;">
-
                         <thead><tr style="background:#1e293b; border-bottom:2px solid #475569;"><th style="padding:6px; text-align:left;">Localização</th><th style="padding:6px; text-align:center;">FRP</th><th style="padding:6px; text-align:center;">Data / Hora (UTC)</th><th style="padding:6px; text-align:center;">Coordenadas</th></tr></thead>
-
                         <tbody>${focosRelatorio.map(f => {
-
                             let hora = String(f.acq_time).padStart(4, '0');
-
                             let horaFormatada = hora.length === 4 ? `${hora.slice(0,2)}:${hora.slice(2,4)}` : f.acq_time;
-
                             return `<tr style="border-bottom:1px solid #334155;">
-
                                 <td style="padding:6px; color:#06b6d4; font-weight:600;">${f.aoi_nome || '-'}</td>
-
                                 <td style="padding:6px; text-align:center; font-weight:700; color:${obterCorFRP(f.frp)};">${f.frp.toFixed(1)} MW</td>
-
                                 <td style="padding:6px; text-align:center;">${f.acq_date}<br><span style="font-size:10px; color:#94a3b8;">${horaFormatada}</span></td>
-
                                 <td style="padding:6px; text-align:center; font-family:monospace;">${f.latitude.toFixed(4)}, ${f.longitude.toFixed(4)}</td>
-
                             </tr>`;
-
                         }).join('')}</tbody>
-
                     </table>`;
-
             } else {
-
                 tabela = '<p style="color:#10b981; margin-top:15px; text-align:center; font-size:14px;"><b>Status Verde:</b> Nenhum foco detectado nas propriedades no período selecionado.</p>';
-
             }
-
-
 
             document.getElementById('relatorio-conteudo').innerHTML = `
-
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:6px; margin-bottom:8px;">
-
                     <div>
-
                         <h3 style="font-size:14px; color:#f8fafc; margin:0; text-align:left;">BOLETIM DE QUEIMADAS CSN • NOAA-21</h3>
-
                         <small style="color:var(--text-muted); display:block; text-align:left;">Data: ${dataHoje} | Horário de Brasília (UTC-3)</small>
-
                     </div>
-
                     <div>
-
                         <select class="form-control" style="width:140px; font-size:11px; padding:4px;" onchange="abrirRelatorio(this.value)">
-
                             <option value="7d" ${periodo === '7d' ? 'selected' : ''}>Últimos 7 Dias</option>
-
                             <option value="24h" ${periodo === '24h' ? 'selected' : ''}>Últimas 24 Horas</option>
-
                         </select>
-
                     </div>
-
                 </div>
-
                 <div style="display:flex; justify-content:space-around; background:#1e293b; padding:8px; border-radius:6px; text-align:center; margin-bottom:10px;">
-
                     <div><small style="color:#ef4444; font-weight:700;">TOTAL DE FOCOS</small><div style="font-weight:bold; font-size:16px; color:#ef4444;">${kpiAoiVal}</div></div>
-
                     <div><small style="color:#f59e0b; font-weight:700;">MAIOR FRP REGISTRADO</small><div style="font-weight:bold; font-size:16px; color:#f59e0b;">${kpiMaxFrpVal.toFixed(1)} MW</div></div>
-
                 </div>
-
                 ${tabela}
-
             `;
 
-
-
             document.getElementById('modal-relatorio').style.display = 'flex';
-
         }
-
-
 
         function toggleMobileLayer(type, btn) {
-
             if(type === 'satelite' || type === 'ruas') {
-
                 let satBtn = document.getElementById('chip-satelite');
-
                 let ruasBtn = document.getElementById('chip-ruas');
-
                 if(type === 'satelite') {
-
                     if(satBtn) satBtn.classList.add('active');
-
                     if(ruasBtn) ruasBtn.classList.remove('active');
-
                     map.addLayer(googleSat);
-
                     map.removeLayer(openStreetMap);
-
                 } else {
-
                     if(ruasBtn) ruasBtn.classList.add('active');
-
                     if(satBtn) satBtn.classList.remove('active');
-
                     map.addLayer(openStreetMap);
-
                     map.removeLayer(googleSat);
-
                 }
-
                 return;
-
             }
-
-
 
             btn.classList.toggle('active');
-
             let isActive = btn.classList.contains('active');
-
             if(type === 'fazendas') {
-
                 if(isActive) { map.addLayer(layerGroupAOI); } else { map.removeLayer(layerGroupAOI); }
-
             } else if(type === 'buffers') {
-
                 if(isActive) { map.addLayer(layerGroupBuffers); } else { map.removeLayer(layerGroupBuffers); }
-
             } else if(type === 'focos') {
-
                 if(isActive) { map.addLayer(layerGroupFocos); } else { map.removeLayer(layerGroupFocos); }
-
             } else if(type === 'calor') {
-
                 if(isActive) { map.addLayer(layerHeat); } else { map.removeLayer(layerHeat); }
-
             }
-
         }
-
-
 
         function switchTab(tabId, el) {
-
             document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
-
             if(el) el.classList.add('active');
-
             
-
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
             if (tabId !== 'tab-mapa') {
-
                 const tab = document.getElementById(tabId);
-
                 if (tab) tab.classList.add('active');
-
                 document.body.classList.remove('mobile-show-map');
-
                 document.body.classList.add('mobile-show-sidebar');
-
             } else {
-
                 document.body.classList.add('mobile-show-map');
-
                 document.body.classList.remove('mobile-show-sidebar');
-
                 setTimeout(() => { if (window.map) map.invalidateSize(); }, 50);
-
             }
-
         }
-
-
 
         function atualizarFiltros() {
-
             const val = document.getElementById('slider-frp').value;
-
             document.getElementById('val-frp').innerText = `${val} MW`;
-
             if (allFocos.length > 0) processarFocos(allFocos);
-
         }
-
-
 
         function fecharModal() {
-
             document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
-
         }
-
-
 
         async function carregarRelatorios() {
-
             try {
-
                 const resp = await fetch(`./public/reports_data.json?t=${new Date().getTime()}`);
-
                 if (resp.ok) {
-
                     const text = await resp.text();
-
                     const newHash = text.length.toString(); 
-
                     
-
                     if (reportsHash !== '' && reportsHash !== newHash) {
-
                         document.getElementById('update-notification').style.display = 'flex';
-
                         setTimeout(() => window.location.reload(), 3000);
-
                         return;
-
                     }
-
                     reportsHash = newHash;
-
                     reportsData = JSON.parse(text);
-
                     atualizarGraficoRelatorios();
-
                 }
-
             } catch(e) {
-
                 console.log("Relatórios não disponíveis");
-
             }
-
         }
-
         
-
         setInterval(carregarRelatorios, 60000);
 
-
-
         function atualizarGraficoRelatorios() {
-
             let props = Object.keys(reportsData);
-
             let counts = props.map(p => reportsData[p].length);
-
             
-
             let combined = props.map((p, i) => ({ label: p, count: counts[i] }));
-
             combined.sort((a, b) => b.count - a.count);
-
             
-
             props = combined.map(x => x.label);
-
             counts = combined.map(x => x.count);
-
             
-
             const elemChartRel = document.getElementById('chartRelatorios');
-
             if (elemChartRel) {
-
                 const height = Math.max(150, props.length * 35);
-
                 elemChartRel.parentElement.style.height = height + 'px';
 
-
-
                 const ctxRel = elemChartRel.getContext('2d');
-
                 if (chartRelatoriosInstance) chartRelatoriosInstance.destroy();
-
                 chartRelatoriosInstance = new Chart(ctxRel, {
-
                     type: 'bar',
-
                     data: {
-
                         labels: props.length > 0 ? props : ['Sem Relatórios'],
-
                         datasets: [{
-
                             label: 'Relatórios',
-
                             data: counts.length > 0 ? counts : [0],
-
                             backgroundColor: '#06b6d4',
-
                             borderRadius: 4,
-
                             barPercentage: 0.8
-
                         }]
-
                     },
-
                     options: {
-
                         indexAxis: 'y',
-
                         responsive: true,
-
                         maintainAspectRatio: false,
-
                         plugins: { legend: { display: false } },
-
                         scales: {
-
                             x: { ticks: { color: '#94a3b8', font: { size: 9 }, stepSize: 1 }, grid: { color: '#334155' } },
-
                             y: { ticks: { display: false }, grid: { display: false } }
-
                         },
-
                         onClick: (event, elements) => {
-
                             if (elements.length > 0) {
-
                                 const idx = elements[0].index;
-
                                 const propName = chartRelatoriosInstance.data.labels[idx];
-
                                 if (propName === 'Sem Relatórios') return;
-
                                 
-
                                 if (window.AOI_GEOJSON) {
-
                                     const propNameUpper = propName.toUpperCase().trim();
-
                                     const features = window.AOI_GEOJSON.features.filter(feat => {
-
                                         const p = feat.properties;
-
                                         const nome = (p.FAZENDA || p.Name || p.name || p.COD || '').toUpperCase().trim();
-
                                         return nome.includes(propNameUpper) || propNameUpper.includes(nome);
-
                                     });
-
                                     if (features.length > 0) {
-
                                         map.fitBounds(L.geoJSON(features).getBounds(), { padding: [40, 40] });
-
                                     }
-
                                 }
-
                             }
-
                         }
-
                     },
-
                     plugins: [{
-
                         id: 'labelsInside',
-
                         afterDatasetsDraw(chart) {
-
                             const ctx = chart.ctx;
-
                             chart.data.datasets.forEach((dataset, i) => {
-
                                 const meta = chart.getDatasetMeta(i);
-
                                 meta.data.forEach((bar, index) => {
-
                                     const label = chart.data.labels[index];
-
                                     if (label === 'Sem Relatórios') return;
-
                                     
-
                                     ctx.fillStyle = '#ffffff';
-
                                     ctx.font = 'bold 11px sans-serif';
-
                                     ctx.textAlign = 'left';
-
                                     ctx.textBaseline = 'middle';
-
                                     
-
                                     const xPos = bar.base + 8;
-
                                     ctx.fillText(label, xPos, bar.y);
-
                                 });
-
                             });
-
                         }
-
                     }]
-
                 });
-
             }
-
         }
-
-
 
         window.onload = () => {
-
             const ctxRisco = document.getElementById('chartRiscoGauge');
-
             if (ctxRisco) {
-
                 chartRiscoGaugeInstance = new Chart(ctxRisco.getContext('2d'), {
-
                     type: 'doughnut',
-
                     data: {
-
                         datasets: [{
-
                             data: [20, 20, 20, 20, 20],
-
                             backgroundColor: ['#10b981', '#eab308', '#f59e0b', '#ef4444', '#991b1b'],
-
                             borderWidth: 0,
-
                             cutout: '75%'
-
                         }]
-
                     },
-
                     options: {
-
                         responsive: true,
-
                         maintainAspectRatio: false,
-
                         rotation: -90,
-
                         circumference: 180,
-
                         plugins: {
-
                             legend: { display: false },
-
                             tooltip: { enabled: false }
-
                         },
-
                         events: [] // Disable interactions
-
                     }
-
                 });
-
             }
-
-
 
             carregarRelatorios();
-
             carregarAOIs();
-
             atualizarFocosBackendProxy();
-
         };
 
-
-
         // --- TIMELINE PLAYER LOGIC ---
-
         let timelineInterval = null;
-
         let timelineMinTime = 0;
-
         let timelineMaxTime = 0;
-
         let timelineIsPlaying = false;
-
         
-
         function initTimeline(focos) {
-
             if (!focos || focos.length === 0) return;
-
             
-
             let min = Infinity;
-
             let max = -Infinity;
-
             
-
             focos.forEach(f => {
-
                 let timeStr = (f.acq_time || '0000').toString().padStart(4, '0');
-
                 let fireDateStr = `${f.acq_date}T${timeStr.substring(0,2)}:${timeStr.substring(2,4)}:00Z`;
-
                 let t = new Date(fireDateStr).getTime();
-
                 if (t < min) min = t;
-
                 if (t > max) max = t;
-
             });
-
             
-
             if (min === Infinity || min === max) return;
-
             
-
             max = new Date().getTime(); // Allow up to current real time
-
             
-
             timelineMinTime = min;
-
             timelineMaxTime = max;
-
             
-
             document.getElementById('timeline-player-container').style.display = 'flex';
-
             document.getElementById('timeline-label-start').innerText = new Date(min).toLocaleDateString('pt-BR').substring(0,5);
-
             document.getElementById('timeline-label-end').innerText = 'Agora';
-
             
-
             const slider = document.getElementById('timeline-slider');
-
             if (!window.timelineCurrentDate) {
-
                 slider.value = 100;
-
                 window.timelineCurrentDate = new Date(max);
-
                 updateTimelineUI();
-
             }
-
         }
-
         
-
         function onTimelineScrub() {
-
             if (timelineIsPlaying) toggleTimelinePlay();
-
             
-
             const slider = document.getElementById('timeline-slider');
-
             const percent = parseInt(slider.value, 10);
-
             
-
             const timeRange = timelineMaxTime - timelineMinTime;
-
             const targetTime = timelineMinTime + (timeRange * (percent / 100));
-
             
-
             window.timelineCurrentDate = new Date(targetTime);
-
             updateTimelineUI();
-
             
-
             if (typeof allFocos !== 'undefined') {
-
                 const relevantFocos = allFocos.filter(f => f.tipoLocal === 'propriedade' || f.tipoLocal === 'buffer');
-
                 processarFocos(relevantFocos);
-
             }
-
         }
-
         
-
         function updateTimelineUI() {
-
             if (!window.timelineCurrentDate) return;
-
             
-
             const dt = window.timelineCurrentDate;
-
             const dateStr = dt.toLocaleDateString('pt-BR');
-
             document.getElementById('timeline-current-time').innerText = `${dateStr}`;
-
         }
-
         
-
         function toggleTimelinePlay() {
-
             const btn = document.getElementById('btn-timeline-play');
-
             const slider = document.getElementById('timeline-slider');
-
             const container = document.getElementById('timeline-player-container');
-
             
-
             if (timelineIsPlaying) {
-
                 timelineIsPlaying = false;
-
                 clearInterval(timelineInterval);
-
                 btn.innerHTML = '<i class="fa-solid fa-play"></i>';
-
                 container.classList.remove('timeline-playing');
-
             } else {
-
                 timelineIsPlaying = true;
-
                 btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-
                 container.classList.add('timeline-playing');
-
                 
-
                 if (parseInt(slider.value, 10) >= 100) {
-
                     slider.value = 0;
-
                 }
-
                 
-
                 timelineInterval = setInterval(() => {
-
                     let val = parseInt(slider.value, 10);
-
                     val += 1; 
-
                     
-
                     if (val >= 100) {
-
                         val = 100;
-
                         toggleTimelinePlay(); 
-
                     }
-
                     
-
                     slider.value = val;
-
                     
-
                     const timeRange = timelineMaxTime - timelineMinTime;
-
                     const targetTime = timelineMinTime + (timeRange * (val / 100));
-
                     window.timelineCurrentDate = new Date(targetTime);
-
                     updateTimelineUI();
-
                     
-
                     if (typeof allFocos !== 'undefined') {
-
                         const relevantFocos = allFocos.filter(f => f.tipoLocal === 'propriedade' || f.tipoLocal === 'buffer');
-
                         processarFocos(relevantFocos);
-
                     }
-
                 }, 400); // Increased interval to 400ms (slower playback)
-
             }
-
         }
-
-
 
         window.addEventListener('resize', () => {
-
             if (window.innerWidth > 768) {
-
                 document.getElementById('map-container').style.display = '';
-
                 document.getElementById('sidebar').style.display = '';
-
                 if(window.map) map.invalidateSize();
-
             } else {
-
                 if(!document.body.classList.contains('mobile-show-sidebar') && !document.body.classList.contains('mobile-show-map')) {
-
                     // Estado inicial no mobile
-
                     switchTab('tab-mapa', document.querySelector('.sidebar-tab.d-mobile-only'));
-
                 }
-
             }
-
         });
-
-
 
         document.addEventListener('DOMContentLoaded', () => {
-
             if (window.innerWidth <= 768) {
-
                 setTimeout(() => {
-
                     switchTab('tab-mapa', document.querySelector('.sidebar-tab.d-mobile-only'));
-
                 }, 100);
-
             }
-
         });
-
-
 
     </script>
 
-
-
 </body>
-
-
 
 </html>
