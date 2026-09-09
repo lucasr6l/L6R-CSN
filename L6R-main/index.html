@@ -33,6 +33,17 @@
                     });
             });
         }
+
+        async function doLogout() {
+            try {
+                const response = await fetch('/api/logout', { method: 'POST' });
+                if (response.ok) {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Erro ao fazer logout', error);
+            }
+        }
     </script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -510,7 +521,7 @@
 
 </head>
 
-﻿<body>
+<body>
     <div id="update-notification" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:10px 20px; border-radius:8px; z-index:9999; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.5);"><i class="fa-solid fa-arrows-rotate fa-spin"></i> Novos relatórios detectados. Atualizando...</div>
 
     <header>
@@ -560,11 +571,11 @@
 
         <div class="header-actions">
 
-            
-
             <button class="btn-header btn-primary" id="btn-atualizar-focos" style="background-color: #ef4444; color: white;" onclick="atualizarFocosBackendProxy()"><i class="fa-solid fa-rotate"></i> Atualizar Focos (Proxy)</button>
 
             <button class="btn-header" onclick="abrirRelatorio()"><i class="fa-solid fa-file-pdf"></i> Relatório</button>
+
+            <button class="btn-header" onclick="doLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
 
         </div>
 

@@ -10,10 +10,11 @@ import datetime
 from pathlib import Path
 
 import requests
-from fastapi import FastAPI, Query, status
+from fastapi import FastAPI, Query, status, Request, Depends, HTTPException, Cookie
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, FileResponse, HTMLResponse, Response
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse, Response, RedirectResponse
+from pydantic import BaseModel
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -93,8 +94,51 @@ def serve_data_aoi():
 def serve_favicon():
     return JSONResponse(status_code=204, content={})
 
+# ==========================================
+# AUTENTICAÇÃO E LOGIN
+# ==========================================
+class LoginData(BaseModel):
+    username: str
+    password: str
+
+# Usuário e senha fixos (padrão)
+ADMIN_USER = "admin"
+ADMIN_PASS = "csn2024"
+SECRET_TOKEN = "geoportal-csn-auth-token-2024"
+
+@app.get("/login")
+def serve_login():
+    login_path = BASE_DIR / "login.html"
+    if login_path.exists():
+        return HTMLResponse(content=login_path.read_text(encoding='utf-8'))
+    return JSONResponse(status_code=404, content={"error": "login.html não encontrado"})
+
+@app.post("/api/login")
+def api_login(data: LoginData):
+    if data.username == ADMIN_USER and data.password == ADMIN_PASS:
+        response = JSONResponse(content={"message": "Login efetuado com sucesso"})
+        # Define o cookie que será verificado nas rotas protegidas
+        response.set_cookie(key="access_token", value=SECRET_TOKEN, httponly=True, max_age=86400) # 24 horas
+        return response
+    raise HTTPException(status_code=401, detail="Usuário ou senha incorretos")
+
+@app.post("/api/logout")
+def api_logout():
+    response = JSONResponse(content={"message": "Logout efetuado com sucesso"})
+    response.delete_cookie(key="access_token")
+    return response
+
+def get_current_user(request: Request):
+    token = request.cookies.get("access_token")
+    if token == SECRET_TOKEN:
+        return True
+    return False
+
 @app.get("/")
-def serve_root():
+def serve_root(request: Request):
+    if not get_current_user(request):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+        
     index_path = BASE_DIR / "index.html"
     if index_path.exists():
         return HTMLResponse(content=index_path.read_text(encoding='utf-8'))
