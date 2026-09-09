@@ -2333,33 +2333,41 @@
                     window.timelineCurrentDate = new Date(targetTime);
                     updateTimelineUI();
                     
-                    if (typeof allFocos !== 'undefined') {
-                        const relevantFocos = allFocos.filter(f => f.tipoLocal === 'propriedade' || f.tipoLocal === 'buffer');
+                    if (typeof allFocos !== "undefined") {
+                        const relevantFocos = allFocos.filter(f => f.tipoLocal === "propriedade" || f.tipoLocal === "buffer");
                         processarFocos(relevantFocos);
                     }
                 }, 400); // Increased interval to 400ms (slower playback)
             }
         }
 
-        window.addEventListener('resize', () => {
+        window.addEventListener("resize", () => {
             if (window.innerWidth > 768) {
-                document.getElementById('map-container').style.display = '';
-                document.getElementById('sidebar').style.display = '';
+                document.getElementById("map-container").style.display = "";
+                document.getElementById("sidebar").style.display = "";
                 if(window.map) map.invalidateSize();
             } else {
-                if(!document.body.classList.contains('mobile-show-sidebar') && !document.body.classList.contains('mobile-show-map')) {
+                if(!document.body.classList.contains("mobile-show-sidebar") && !document.body.classList.contains("mobile-show-map")) {
                     // Estado inicial no mobile
-                    switchTab('tab-mapa', document.querySelector('.sidebar-tab.d-mobile-only'));
+                    switchTab("tab-mapa", document.querySelector(".sidebar-tab.d-mobile-only"));
                 }
             }
         });
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener("DOMContentLoaded", () => {
             if (window.innerWidth <= 768) {
                 setTimeout(() => {
-                    switchTab('tab-mapa', document.querySelector('.sidebar-tab.d-mobile-only'));
+                    switchTab("tab-mapa", document.querySelector(".sidebar-tab.d-mobile-only"));
                 }, 100);
             }
+            
+            // Auto-refresh a cada 5 minutos (300.000 ms)
+            setInterval(() => {
+                console.log("Auto-refresh: buscando novos focos...");
+                if (typeof atualizarFocosBackendProxy === "function") {
+                    atualizarFocosBackendProxy();
+                }
+            }, 300000);
         });
 
     </script>
