@@ -39,18 +39,18 @@
             flex-direction: column;
             align-items: center;
             /* Subir um pouco na tela para equilibrar com o footer */
-            margin-top: -40px;
+            margin-top: -60px; /* Mais negativo para empurrar todo o bloco mais para cima */
         }
 
         .logo-container {
             display: flex;
             justify-content: center;
             /* Aumentei a margem para separar mais do painel e empurrar a logo para cima */
-            margin-bottom: 30px; 
+            margin-bottom: 50px; 
         }
 
         .logo-container img {
-            height: 178px; /* Aumentado em ~27% como solicitado (de 140 para 178) */
+            height: 214px; /* Aumentado em 20% como solicitado (de 178 para 214) */
             width: auto;
             /* Filtros removidos para que a imagem apareça com o brilho e nitidez originais */
             transition: transform 0.3s ease;
@@ -257,6 +257,13 @@
     </div>
 
     <script>
+        // Forçar recarregamento se o usuário usar o botão "Voltar" do navegador
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+
         async function doLogin() {
             const usernameInput = document.getElementById('username');
             const passwordInput = document.getElementById('password');

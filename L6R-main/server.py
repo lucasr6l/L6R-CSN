@@ -107,7 +107,11 @@ ADMIN_PASS = "csn2024"
 SECRET_TOKEN = "geoportal-csn-auth-token-2024"
 
 @app.get("/login")
-def serve_login():
+def serve_login(request: Request):
+    if get_current_user(request):
+        url = request.url_for("serve_root")
+        return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+
     login_path = BASE_DIR / "login.html"
     if login_path.exists():
         return HTMLResponse(content=login_path.read_text(encoding='utf-8'))
