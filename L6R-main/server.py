@@ -109,8 +109,8 @@ SECRET_TOKEN = "geoportal-csn-auth-token-2024"
 @app.get("/login")
 def serve_login(request: Request):
     if get_current_user(request):
-        url = request.url_for("serve_root")
-        return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+        # Usa caminho relativo para não quebrar no subdiretório /geoportal
+        return RedirectResponse(url="./", status_code=status.HTTP_302_FOUND)
 
     login_path = BASE_DIR / "login.html"
     if login_path.exists():
@@ -141,8 +141,8 @@ def get_current_user(request: Request):
 @app.get("/")
 def serve_root(request: Request):
     if not get_current_user(request):
-        url = request.url_for("serve_login")
-        return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
+        # Usa caminho relativo para funcionar tanto no localhost quanto na Hostgator (/geoportal)
+        return RedirectResponse(url="login", status_code=status.HTTP_302_FOUND)
         
     index_path = BASE_DIR / "index.html"
     if index_path.exists():
