@@ -5,24 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | GEOPORTAL CSN</title>
-    <meta name="theme-color" content="#030712">
+    <meta name="theme-color" content="#1a1a1a">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-dark: #050505;
-            --bg-card: rgba(15, 15, 15, 0.90); /* Caixa mais escura */
-            --border-color: rgba(212, 175, 55, 0.25);
-            --border-glow: 0 0 15px rgba(212, 175, 55, 0.1);
-            --accent-cyan: #00d4ff;
-            --accent-gold: #d4af37;
-            --accent-red: #ff3366;
-            --text-main: #f0f0f0;
-            --text-muted: #a0a0a0;
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
@@ -33,96 +19,78 @@
             width: 100%;
             height: 100vh;
             font-family: 'Inter', sans-serif;
-            background-color: #ffffff; /* Fundo branco para caso a imagem não cubra a tela toda */
-            color: var(--text-main);
+            background-color: #f5f5f5;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            background-image: url('public/LOGO NOVA.jpeg');
-            background-size: 80%; /* Diminui a imagem em 20% (100% -> 80%) */
+            /* Fundo exato */
+            background-image: url('public/fundo-premium-4k.jfif');
+            background-size: 100% 100%; /* Força a imagem a mostrar tudo sem dar zoom ou cortar */
             background-position: center;
             background-repeat: no-repeat;
-        }
-
-        /* Fundo com efeito visual */
-        .background-effect {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            opacity: 0.15;
-            background-image:
-                radial-gradient(circle at 15% 50%, rgba(212, 175, 55, 0.4) 0%, transparent 40%),
-                radial-gradient(circle at 85% 30%, rgba(0, 212, 255, 0.4) 0%, transparent 40%);
-            filter: blur(40px);
+            background-attachment: fixed;
         }
 
         .login-wrapper {
-            position: relative;
-            z-index: 10;
             width: 100%;
-            max-width: 420px;
-            padding: 20px;
+            max-width: 387px; /* Diminuído em 12% (de 440px para 387px) */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Subir um pouco na tela para equilibrar com o footer */
+            margin-top: -40px;
         }
 
-        .brand-logo {
+        .logo-container {
             display: flex;
-            align-items: center;
             justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.2));
+            /* Aumentei a margem para separar mais do painel e empurrar a logo para cima */
+            margin-bottom: 30px; 
+        }
+
+        .logo-container img {
+            height: 178px; /* Aumentado em ~27% como solicitado (de 140 para 178) */
+            width: auto;
+            /* Filtros removidos para que a imagem apareça com o brilho e nitidez originais */
+            transition: transform 0.3s ease;
+        }
+
+        .logo-container img:hover {
+            transform: scale(1.03);
         }
 
         .login-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), var(--border-glow);
-            transform: translateY(0);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            animation: slideUp 0.8s ease-out forwards;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            width: 100%;
+            /* Fundo simulando metal escovado/fosco - Um pouco mais claro que antes */
+            background: linear-gradient(145deg, #383838 0%, #1c1c1c 100%);
+            /* Borda sutil para dar o aspecto 3D da placa */
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px; /* Bordas um pouco menos arredondadas */
+            padding: 55px 40px 40px 40px; /* Mais espaço interno, ajustado para o novo tamanho */
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), 0 0 100px rgba(0,0,0,0.2);
         }
 
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
         }
 
         .login-title {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 300;
-            letter-spacing: 2px;
-            color: var(--text-main);
+            letter-spacing: 3px;
+            color: #f0f0f0;
             text-transform: uppercase;
         }
 
         .login-subtitle {
-            font-size: 11px;
-            color: var(--accent-gold);
-            font-weight: 400;
-            letter-spacing: 3px;
+            font-size: 10px;
+            color: #d4af37; /* Dourado */
+            font-weight: 500;
+            letter-spacing: 2px;
             text-transform: uppercase;
             margin-top: 8px;
-            opacity: 0.9;
         }
 
         .form-group {
@@ -132,9 +100,9 @@
 
         .form-group label {
             display: block;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 500;
-            color: var(--text-muted);
+            color: #888;
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -148,46 +116,50 @@
 
         .input-icon {
             position: absolute;
-            left: 14px;
-            color: var(--text-muted);
-            font-size: 14px;
+            left: 15px;
+            color: #555;
+            font-size: 12px;
             transition: color 0.3s;
         }
 
         .form-control {
             width: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-            padding: 12px 12px 12px 40px;
-            border-radius: 6px;
-            font-size: 14px;
+            /* Inputs bem escuros igual na imagem */
+            background: #111111;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            color: #e0e0e0;
+            padding: 14px 14px 14px 45px;
+            border-radius: 4px;
+            font-size: 13px;
             font-family: inherit;
             transition: all 0.3s ease;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .form-control::placeholder {
+            color: #444;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: var(--accent-cyan);
-            background: rgba(0, 0, 0, 0.6);
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0, 212, 255, 0.15);
+            border-color: rgba(212, 175, 55, 0.4);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5), 0 0 10px rgba(212, 175, 55, 0.1);
         }
 
         .form-control:focus+.input-icon,
         .form-control:not(:placeholder-shown)+.input-icon {
-            color: var(--accent-cyan);
+            color: #d4af37;
         }
 
         .btn-login {
             width: 100%;
             background: transparent;
-            border: 1px solid var(--accent-gold);
-            color: var(--accent-gold);
-            padding: 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
+            border: 1px solid rgba(212, 175, 55, 0.3); /* Borda dourada mais fina e sutil */
+            color: #d4af37; /* Texto dourado */
+            padding: 13px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
             letter-spacing: 2px;
             text-transform: uppercase;
             cursor: pointer;
@@ -200,84 +172,51 @@
         }
 
         .btn-login:hover {
-            background: rgba(212, 175, 55, 0.1);
-            border-color: var(--accent-gold);
-            color: #fff;
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .btn-login:active {
-            transform: translateY(0);
+            background: rgba(212, 175, 55, 0.05);
+            border-color: #e6c57a;
+            color: #e6c57a;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
         }
 
         .error-message {
             background: rgba(255, 51, 102, 0.1);
-            border: 1px solid rgba(255, 51, 102, 0.3);
-            color: #ff809f;
+            border: 1px solid rgba(255, 51, 102, 0.2);
+            color: #ff6b8b;
             padding: 12px;
-            border-radius: 6px;
-            font-size: 12px;
+            border-radius: 4px;
+            font-size: 11px;
             text-align: center;
             margin-bottom: 20px;
             display: none;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            animation: shake 0.5s ease-in-out;
-        }
-
-        @keyframes shake {
-
-            0%,
-            100% {
-                transform: translateX(0);
-            }
-
-            10%,
-            30%,
-            50%,
-            70%,
-            90% {
-                transform: translateX(-5px);
-            }
-
-            20%,
-            40%,
-            60%,
-            80% {
-                transform: translateX(5px);
-            }
         }
 
         .footer-text {
             text-align: center;
-            margin-top: 240px; /* Desce o texto um pouco mais */
-            font-size: 11px;
-            font-weight: 900;
-            color: #000000;
-            letter-spacing: 1px;
-            opacity: 1;
-            white-space: nowrap; /* Impede que o texto quebre em duas linhas */
-        }
-
-        /* Adicionando ícone aos logos se não existirem as imagens, mas como existem, vamos usá-las */
-        .logos-container img {
-            height: 40px;
-            width: auto;
-            mix-blend-mode: screen;
+            margin-top: 40px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #7a7a7a; /* Cor acinzentada que mescla com o mármore */
+            letter-spacing: 1.5px;
+            white-space: nowrap;
+            text-transform: uppercase;
         }
     </style>
 </head>
 
 <body>
-    <div class="background-effect"></div>
-
     <div class="login-wrapper">
+        
+        <div class="logo-container">
+            <img src="public/logo.png" alt="L6R Logo">
+        </div>
+
         <div class="login-card">
             <div class="login-header">
                 <div class="login-title">Acesso Restrito</div>
-                <div class="login-subtitle"><i class="fa-solid fa-lock" style="font-size: 9px; margin-right: 4px;"></i>
+                <div class="login-subtitle"><i class="fa-solid fa-lock" style="font-size: 9px; margin-right: 5px;"></i>
                     Autenticação Necessária</div>
             </div>
 
@@ -307,13 +246,13 @@
 
                 <button type="submit" class="btn-login" id="btn-submit">
                     <span>Entrar no Sistema</span>
-                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                    <i class="fa-solid fa-arrow-right-to-bracket" style="font-size: 12px;"></i>
                 </button>
             </form>
         </div>
 
         <div class="footer-text">
-            &copy; 2026 GEOPORTAL CSN • MONITORAMENTO DE QUEIMADAS
+            &copy; 2026 GEOPORTAL CSN - MONITORAMENTO DE QUEIMADAS
         </div>
     </div>
 
@@ -343,9 +282,8 @@
                 });
 
                 if (response.ok) {
-                    // Login successful, animate and redirect
-                    btnSubmit.style.borderColor = '#00ffcc';
-                    btnSubmit.style.color = '#00ffcc';
+                    btnSubmit.style.borderColor = '#cba34d';
+                    btnSubmit.style.color = '#cba34d';
                     btnSubmit.innerHTML = '<i class="fa-solid fa-check"></i><span>Acesso Liberado</span>';
 
                     setTimeout(() => {
@@ -355,11 +293,6 @@
                     const data = await response.json().catch(() => ({}));
                     errorText.innerText = data.detail || 'Usuário ou senha incorretos.';
                     errorMsg.style.display = 'flex';
-                    // Re-trigger shake animation
-                    errorMsg.style.animation = 'none';
-                    errorMsg.offsetHeight; /* trigger reflow */
-                    errorMsg.style.animation = null;
-
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = '<span>Entrar no Sistema</span><i class="fa-solid fa-arrow-right-to-bracket"></i>';
                     passwordInput.value = '';
